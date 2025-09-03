@@ -3,15 +3,17 @@ cmake_minimum_required( VERSION 3.22.1 )
 option( AUDIO_BUILD_EXAMPLES "Include the example projects." ON )
 option( BUILD_SHARED_LIBS "Build Audio library as a shared library (DLL)." OFF )
 
-# Make sure DLL and EXE targets go to the same directory.
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-
 # Use solution folders in Visual Studio.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 project( Audio LANGUAGES C CXX )
+
+if( CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    # Make sure DLL and EXE targets go to the same directory.
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+endif()
 
 # Enable multi-processor builds in MSVC.
 if(MSVC)
@@ -49,6 +51,7 @@ set( ALL_FILES
 )
 
 add_library( Audio ${ALL_FILES} .clang-format )
+add_library( Audio::Audio ALIAS Audio )
 
 set_target_properties( Audio
     PROPERTIES
