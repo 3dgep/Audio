@@ -1,3 +1,5 @@
+#include <vld.h>
+
 #include "MarioCoin.hpp"
 
 #include <Audio/Sound.hpp>
