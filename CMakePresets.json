@@ -72,6 +72,31 @@
             "cacheVariables": {
                 "BUILD_SHARED_LIBS": "ON"
             }
+        },
+        {
+            "name": "clang-static",
+            "displayName": "Clang (Static)",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++"
+            }
+        },
+        {
+            "name": "clang-shared",
+            "displayName": "Clang (Shared)",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "clang",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "BUILD_SHARED_LIBS": "ON"
+            }
         }
     ],
     "buildPresets": [
@@ -157,6 +182,30 @@
             "displayName": "Ninja Shared Release",
             "description": "Release build using Ninja (shared)",
             "configurePreset": "ninja-shared",
+            "configuration": "Release"
+        },
+        {
+            "name": "clang-static-debug",
+            "displayName": "Clang Static Debug",
+            "configurePreset": "clang-static",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-static-release",
+            "displayName": "Clang Static Release",
+            "configurePreset": "clang-static",
+            "configuration": "Release"
+        },
+        {
+            "name": "clang-shared-debug",
+            "displayName": "Clang Shared Debug",
+            "configurePreset": "clang-shared",
+            "configuration": "Debug"
+        },
+        {
+            "name": "clang-shared-release",
+            "displayName": "Clang Shared Release",
+            "configurePreset": "clang-shared",
             "configuration": "Release"
         }
     ],
