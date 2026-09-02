@@ -329,6 +329,25 @@ public:
     void setFade( float endVolume, uint64_t milliseconds );
 
     /// <summary>
+    /// Fade this sound from a starting volume to an ending volume over a period of time.
+    /// </summary>
+    /// <typeparam name="Rep">The representation of the duration.</typeparam>
+    /// <typeparam name="Period">The duration period.</typeparam>
+    /// <param name="beginVolume">The volume to start this fade from.</param>
+    /// <param name="endVolume">The volume to fade this sound to.</param>
+    /// <param name="duration">The time to get to the `endVolume`.</param>
+    template<class Rep, class Period = std::ratio<1>>
+    void setFade( float beginVolume, float endVolume, const std::chrono::duration<Rep, Period>& duration );
+
+    /// <summary>
+    /// Fade this sound from a starting volume to an ending volume over a number of milliseconds.
+    /// </summary>
+    /// <param name="beginVolume">The volume to start this fade from.</param>
+    /// <param name="endVolume">The volume to fade this sound to.</param>
+    /// <param name="milliseconds">The duration in milliseconds to fade to `endVolume`.</param>
+    void setFade( float beginVolume, float endVolume, uint64_t milliseconds );
+
+    /// <summary>
     /// Schedule this sound to start playing at a specific time.
     /// Note: The sound must be explicitly started using `play`.
     /// </summary>
@@ -418,6 +437,13 @@ template<class Rep, class Period>
 void Sound::setFade( float endVolume, const std::chrono::duration<Rep, Period>& duration )
 {
     setFade( endVolume, std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
+}
+
+template<class Rep, class Period>
+void Sound::setFade( float beginVolume, float endVolume, const std::chrono::duration<Rep, Period>& duration )
+{
+    setFade( beginVolume, endVolume,
+             std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
 }
 
 template<class Rep, class Period>

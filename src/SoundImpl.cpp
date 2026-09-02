@@ -259,6 +259,11 @@ void SoundImpl::setFade( float endVolume, uint64_t milliseconds )
     ma_sound_set_fade_in_milliseconds( &sound, -1.0f, endVolume, milliseconds );
 }
 
+void SoundImpl::setFade( float beginVolume, float endVolume, uint64_t milliseconds )
+{
+    ma_sound_set_fade_in_milliseconds( &sound, beginVolume, endVolume, milliseconds );
+}
+
 void SoundImpl::setStartTime( uint64_t milliseconds )
 {
     ma_sound_set_start_time_in_milliseconds( &sound, milliseconds );
