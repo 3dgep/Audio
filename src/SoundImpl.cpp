@@ -162,7 +162,7 @@ void SoundImpl::setAttenuationModel( Sound::AttenuationModel attenuation )
 {
     switch ( attenuation )
     {
-    case Sound::AttenuationModel::None:
+    case Sound::AttenuationModel::NoAttenuation:
         ma_sound_set_attenuation_model( &sound, ma_attenuation_model_none );
         break;
     case Sound::AttenuationModel::Inverse:
@@ -182,7 +182,7 @@ Sound::AttenuationModel SoundImpl::getAttenuationModel() const
     switch ( ma_sound_get_attenuation_model( &sound ) )
     {
     case ma_attenuation_model_none:
-        return Sound::AttenuationModel::None;
+        return Sound::AttenuationModel::NoAttenuation;
     case ma_attenuation_model_inverse:
         return Sound::AttenuationModel::Inverse;
     case ma_attenuation_model_linear:
@@ -191,7 +191,7 @@ Sound::AttenuationModel SoundImpl::getAttenuationModel() const
         return Sound::AttenuationModel::Exponential;
     }
 
-    return Sound::AttenuationModel::None;
+    return Sound::AttenuationModel::NoAttenuation;
 }
 
 void SoundImpl::setRollOff( float rollOff )

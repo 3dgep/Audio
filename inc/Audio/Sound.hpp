@@ -27,7 +27,7 @@ public:
 
     enum class AttenuationModel
     {
-        None,         ///< No distance attenuation and no specialization.
+        NoAttenuation,         ///< No distance attenuation and no specialization.
         Inverse,      ///< Equivalent to OpenAL's AL_INVERSE_DISTANCE_CLAMPED.
         Linear,       ///< Linear attenuation. Equivalent to OpenAL's AL_LINEAR_DISTANCE_CLAMPED.
         Exponential,  ///< Exponential attenuation. Equivalent to OpenAL's AL_EXPONENT_DISTANCE_CLAMPED.
