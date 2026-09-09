@@ -276,6 +276,11 @@ void Sound::setFade( float endVolume, uint64_t milliseconds )
     impl->setFade( endVolume, milliseconds );
 }
 
+void Sound::setFade( float beginVolume, float endVolume, uint64_t milliseconds )
+{
+    impl->setFade( beginVolume, endVolume, milliseconds );
+}
+
 void Sound::setStartTime( uint64_t milliseconds )
 {
     impl->setStartTime( milliseconds );

@@ -78,6 +78,7 @@ public:
     float getDopplerFactor() const;
 
     void setFade( float endVolume, uint64_t milliseconds );
+    void setFade( float beginVolume, float endVolume, uint64_t milliseconds ); // an added fade to correct issues with the current fade
 
     void setStartTime( uint64_t milliseconds );
     void setStopTime( uint64_t milliseconds );
