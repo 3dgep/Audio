@@ -297,7 +297,7 @@ listener.setDirection( player.getDirection() );
 
 Spatial audio allows you to specify the attenuation model for the sound effect. There are 4 attenuation models:
 
-1. **None**: No attenuation. This is equivalent to disabling spatialization for the sound effect.
+1. **Off**: No attenuation. This is equivalent to disabling spatialization for the sound effect.
 2. **Inverse**: Default attenuation that models natural sound attenuation.
 3. **Linear**: Linear attenuation falloff (less natural, but might be better for 2D sound effects).
 4. **Exponential**: Exponential attenuation.
@@ -305,7 +305,7 @@ Spatial audio allows you to specify the attenuation model for the sound effect. 
 The code snippet shows how to disable attenuation for a sound effect:
 
 ```cpp
-sound.setAttenuation( Audio::Sound::AttenuationModel::None );
+sound.setAttenuationModel( Audio::Sound::AttenuationModel::Off );
 ```
 
 By default, both sounds and the listener have a position of {0, 0, 0}. In this case, the sounds will not exhibit any spatial attenuation.

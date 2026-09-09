@@ -25,9 +25,11 @@ public:
         Stream     = Music,  ///< An alias for Music.
     };
 
+    /// Note: `Off` is deliberately not named `None`, since X11's `X.h` defines
+    /// `None` as a macro, which the preprocessor would substitute here.
     enum class AttenuationModel
     {
-        NoAttenuation,         ///< No distance attenuation and no specialization.
+        Off,          ///< No distance attenuation and no spatialization.
         Inverse,      ///< Equivalent to OpenAL's AL_INVERSE_DISTANCE_CLAMPED.
         Linear,       ///< Linear attenuation. Equivalent to OpenAL's AL_LINEAR_DISTANCE_CLAMPED.
         Exponential,  ///< Exponential attenuation. Equivalent to OpenAL's AL_EXPONENT_DISTANCE_CLAMPED.

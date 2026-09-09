@@ -8,7 +8,20 @@ target_link_libraries( example
 
 target_compile_features( example PUBLIC cxx_std_20 )
 
-set_target_properties( example 
+set_target_properties( example
+    PROPERTIES
+        DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+add_executable( fadeExample fadeExample.cpp )
+
+target_link_libraries( fadeExample
+    PRIVATE Audio
+)
+
+target_compile_features( fadeExample PUBLIC cxx_std_20 )
+
+set_target_properties( fadeExample
     PROPERTIES
         DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
