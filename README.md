@@ -162,7 +162,7 @@ include(FetchContent)
 FetchContent_Declare(
     Audio
     GIT_REPOSITORY https://github.com/3dgep/Audio.git
-    GIT_TAG        v1.0.2
+    GIT_TAG        v1.1.0
 )
 
 FetchContent_MakeAvailable(Audio)
