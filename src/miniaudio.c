@@ -1,7 +1,21 @@
+/*
+ * The miniaudio implementation, with OGG Vorbis support from stb_vorbis.
+ * AUDIO_USE_SYSTEM_DEPS: use an installed miniaudio and stb_vorbis instead of the
+ * copies in src/.
+ */
 #define STB_VORBIS_HEADER_ONLY
-#include "stb_vorbis.c"
+#if defined( AUDIO_USE_SYSTEM_DEPS )
+    #include <stb_vorbis.c>
+#else
+    #include "stb_vorbis.c"
+#endif
+
 #define MINIAUDIO_IMPLEMENTATION
-#include "miniaudio.h"
+#if defined( AUDIO_USE_SYSTEM_DEPS )
+    #include <miniaudio.h>
+#else
+    #include "miniaudio.h"
+#endif
 
 #include "audio_internal.h"
 

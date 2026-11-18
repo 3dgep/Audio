@@ -1,55 +1,58 @@
 @ECHO OFF
+SETLOCAL
 
 REM ****************************************************************************
-REM MIT License
-REM 
-REM Copyright (c) 2023 Jeremiah van Oosten
-REM 
-REM Permission is hereby granted, free of charge, to any person obtaining a copy
-REM of this software and associated documentation files (the "Software"), to deal
-REM in the Software without restriction, including without limitation the rights
-REM to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-REM copies of the Software, and to permit persons to whom the Software is
-REM furnished to do so, subject to the following conditions:
-REM 
-REM The above copyright notice and this permission notice shall be included in all
-REM copies or substantial portions of the Software.
-REM 
-REM THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-REM IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-REM FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-REM AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-REM LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-REM OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-REM SOFTWARE.
-REM ****************************************************************************
-
-REM This script will generate the solution files for the currently installed version
-REM of Visual Studio detected on the user's computer. Supported version of Visual Studio are:
-REM     Visual Studio 2026
-REM     Visual Studio 2022
+REM GenerateProjectFiles.bat
 REM
-REM The solution files (including the example projects) will be created in
-REM out\build\vs18-static if Visual Studio 2026 was detected or in
-REM out\build\vs17-static if Visual Studio 2022 was detected.
+REM Generates a Visual Studio solution for the Audio library and the examples with
+REM CMake, and opens it:
+REM
+REM     out\build\vs18-static\Audio.slnx   (Visual Studio 2026)
+REM     out\build\vs17-static\Audio.sln    (Visual Studio 2022)
+REM
+REM Usage:
+REM     Double-click this file, or run GenerateProjectFiles.bat from a command prompt.
+REM     It can be run from any folder. Run it again after adding or removing source
+REM     files; the solution is updated.
+REM
+REM Requirements:
+REM     Visual Studio 2022 or newer with the "Desktop development with C++"
+REM     workload. If both Visual Studio 2022 and 2026 are installed, Visual Studio
+REM     2026 is used.
+REM
+REM     CMake 4.0 or newer (needed for the examples). CMake is used from the PATH
+REM     if it is installed, otherwise the CMake that comes with Visual Studio.
+REM     Visual Studio 2026 comes with CMake 4; Visual Studio 2022 comes with an
+REM     older version, so install CMake from https://cmake.org/download/ if you
+REM     use Visual Studio 2022.
+REM ****************************************************************************
 
+REM Run from the folder that contains this script (the root of the repository),
+REM because the CMake presets and output folders are relative to it.
 PUSHD "%~dp0"
 
-SET VSWHERE="%~dp0\tools\vswhere\vswhere.exe"
-SET CMAKE="cmake"
+SET VSWHERE="%~dp0tools\vswhere\vswhere.exe"
 
-REM Detect latest version of Visual Studio.
-FOR /F "usebackq delims=." %%i IN (`%VSWHERE% -latest -prerelease -requires Microsoft.VisualStudio.Workload.NativeGame -property installationVersion`) DO (
+REM ----------------------------------------------------------------------------
+REM Find the newest Visual Studio with the C++ build tools: its installation
+REM folder (VS_PATH) and major version (VS_VERSION: 17, 18, ...).
+REM ----------------------------------------------------------------------------
+
+SET VS_PATH=
+SET VS_VERSION=
+FOR /F "usebackq delims=" %%i IN (`%VSWHERE% -latest -prerelease -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) DO (
+    SET "VS_PATH=%%i"
+)
+FOR /F "usebackq delims=." %%i IN (`%VSWHERE% -latest -prerelease -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion`) DO (
     SET VS_VERSION=%%i
 )
 
-IF %VS_VERSION% == 18 (
-    SET CMAKE_PRESET="vs18-static"
-    SET CMAKE_BINARY_DIR=out\build\vs18-static
+REM Choose the CMake preset (from CMakePresets.json) for this version.
+IF "%VS_VERSION%" == "18" (
+    SET CMAKE_PRESET=vs18-static
     SET SOLUTION_FILE=Audio.slnx
-) ELSE IF %VS_VERSION% == 17 (
-    SET CMAKE_PRESET="vs17-static"
-    SET CMAKE_BINARY_DIR=out\build\vs17-static
+) ELSE IF "%VS_VERSION%" == "17" (
+    SET CMAKE_PRESET=vs17-static
     SET SOLUTION_FILE=Audio.sln
 ) ELSE (
     ECHO.
@@ -59,23 +62,46 @@ IF %VS_VERSION% == 18 (
     ECHO *                                                                     *
     ECHO ***********************************************************************
     ECHO No compatible version of Microsoft Visual Studio detected.
-    ECHO Please make sure you have Visual Studio 2022 ^(or newer^) and the
-    ECHO "Game Development with C++" workload installed before running this script.
-    ECHO Go to https://www.visualstudio.com/downloads/ to download the latest version of Visual Studio.
-    ECHO. 
-    PAUSE
-    GOTO :Exit
+    ECHO Please make sure you have Visual Studio 2022 ^(or newer^) with the
+    ECHO "Desktop development with C++" workload installed before running this script.
+    ECHO Go to https://visualstudio.microsoft.com/downloads/ to download the latest version of Visual Studio.
+    ECHO.
+    GOTO :Error
+)
+SET CMAKE_BINARY_DIR=out\build\%CMAKE_PRESET%
+
+REM ----------------------------------------------------------------------------
+REM Find CMake: use the one on the PATH, or else the one that comes with
+REM Visual Studio.
+REM ----------------------------------------------------------------------------
+
+SET CMAKE=cmake
+WHERE /Q cmake
+IF ERRORLEVEL 1 (
+    SET CMAKE="%VS_PATH%\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe"
 )
 
-:GenerateProjectFiles
+REM ----------------------------------------------------------------------------
+REM Generate the solution (with the examples) and open it.
+REM ----------------------------------------------------------------------------
+
 %CMAKE% --preset %CMAKE_PRESET% -DAUDIO_BUILD_EXAMPLES=ON -Wno-dev
-
-IF %ERRORLEVEL% NEQ 0 (
-    PAUSE
-) ELSE (
-    START %CMAKE_BINARY_DIR%\%SOLUTION_FILE%
+IF ERRORLEVEL 1 (
+    ECHO.
+    ECHO Generating the solution failed. If CMake reports that CMake 4.0 or higher is
+    ECHO required, install the latest CMake from https://cmake.org/download/
+    GOTO :Error
 )
 
-:Exit
+REM The empty "" is the window title. Without it, START would use the quoted
+REM path as the title instead of opening it.
+START "" "%CMAKE_BINARY_DIR%\%SOLUTION_FILE%"
 
 POPD
+EXIT /B 0
+
+:Error
+REM Keep the window open when the script was started by double-clicking it.
+PAUSE
+POPD
+EXIT /B 1

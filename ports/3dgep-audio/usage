@@ -1,4 +1,4 @@
-audio provides CMake targets:
+3dgep-audio provides CMake targets:
 
     find_package(Audio CONFIG REQUIRED)
     target_link_libraries(main PRIVATE Audio::Audio)

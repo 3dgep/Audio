@@ -1,5 +1,5 @@
 {
     "cmake.debugConfig": {
-        "cwd": "${workspaceFolder}/example"
+        "cwd": "${workspaceFolder}/examples/assets"
     },
 }

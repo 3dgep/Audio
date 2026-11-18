@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <VCProjectVersion>16.0</VCProjectVersion>
+    <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{297ca8cb-2fed-4c72-8ed5-5acb6ed6efca}</ProjectGuid>
     <RootNamespace>Audio</RootNamespace>
@@ -21,13 +21,17 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
+    <!-- Visual Studio 2022 does not have the v145 toolset: use its own (v143). -->
+    <PlatformToolset Condition="'$(VisualStudioVersion)' == '17.0'">v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
+    <!-- Visual Studio 2022 does not have the v145 toolset: use its own (v143). -->
+    <PlatformToolset Condition="'$(VisualStudioVersion)' == '17.0'">v143</PlatformToolset>
     <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -44,10 +48,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
+    <OutDir>$(MSBuildThisFileDirectory)lib\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)out\obj\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(SolutionDir)lib\$(Configuration)\</OutDir>
+    <OutDir>$(MSBuildThisFileDirectory)lib\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)out\obj\$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -55,7 +61,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <!-- Link with any C runtime (/MD, /MDd, /MT, /MTd). See CMakeLists.txt. -->
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -74,7 +80,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <!-- Link with any C runtime (/MD, /MDd, /MT, /MTd). See CMakeLists.txt. -->
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -88,14 +94,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="inc\Audio\audio.h" />
-    <ClInclude Include="inc\Audio\Audio.hpp" />
-    <ClInclude Include="inc\Audio\Config.hpp" />
-    <ClInclude Include="inc\Audio\Device.hpp" />
-    <ClInclude Include="inc\Audio\Listener.hpp" />
-    <ClInclude Include="inc\Audio\Sound.hpp" />
-    <ClInclude Include="inc\Audio\Vector.hpp" />
-    <ClInclude Include="inc\Audio\Waveform.hpp" />
+    <ClInclude Include="include\Audio\audio.h" />
+    <ClInclude Include="include\Audio\Audio.hpp" />
+    <ClInclude Include="include\Audio\Config.hpp" />
+    <ClInclude Include="include\Audio\Device.hpp" />
+    <ClInclude Include="include\Audio\Listener.hpp" />
+    <ClInclude Include="include\Audio\Sound.hpp" />
+    <ClInclude Include="include\Audio\Vector.hpp" />
+    <ClInclude Include="include\Audio\Waveform.hpp" />
     <ClInclude Include="src\audio_internal.h" />
     <ClInclude Include="src\miniaudio.h" />
   </ItemGroup>

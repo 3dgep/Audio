@@ -7,7 +7,12 @@
 
 #include <Audio/audio.h>
 
-#include "miniaudio.h"
+/* AUDIO_USE_SYSTEM_DEPS: use an installed miniaudio instead of the copy in src/. */
+#if defined( AUDIO_USE_SYSTEM_DEPS )
+    #include <miniaudio.h>
+#else
+    #include "miniaudio.h"
+#endif
 
 #if defined( _WIN32 )
 /*

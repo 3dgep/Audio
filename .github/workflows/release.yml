@@ -11,10 +11,13 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    # Build with the oldest supported Visual Studio (2022), so the packages work with
+    # Visual Studio 2022 and newer. MSVC can't link static libraries built by a newer
+    # toolset. windows-latest only has Visual Studio 2026.
+    runs-on: windows-2022
     strategy:
       matrix:
-        preset: [vs18]
+        preset: [vs17]
         variant: [static, shared]
 
     steps:

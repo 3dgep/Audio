@@ -21,7 +21,8 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - `audio_get_version` to check the version of the linked library at runtime.
 - `Waveform::isPlaying`.
 - `Device::getSampleRate`, `Device::getChannels` and `Device::getListenerCount`.
-- A C example (`example/cExample.c`).
+- A C example (`examples/c_api`).
+- CMake options `AUDIO_USE_SYSTEM_DEPS` (use an installed miniaudio and stb_vorbis) and `AUDIO_MSVC_ANY_CRT` (turn off the `/MT /Zl` build of the static library).
 
 ### Changed
 
@@ -29,6 +30,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - **Breaking:** `Sound::loadSound( path )` and `Sound::loadMusic( path )` are replaced by `Sound::load( path, type )`.
 - **Breaking:** `Sound::setStartTime` and `Sound::setStopTime` now take a delay from now.
 - **Breaking:** `Waveform`'s default frequency is now 440 Hz instead of 0 Hz.
+- **Breaking:** The `inc` folder is renamed to `include`, the same name as in the packages. If you copied the headers into your project by hand, update the include path. CMake, FetchContent and vcpkg users are not affected.
 - The library is implemented in C99 instead of C++.
 - The static library is built with `/MT /Zl` on MSVC, so it links into programs using `/MD`, `/MDd`, `/MT` or `/MTd`.
 - The Visual Studio project no longer uses whole program optimization (`/GL`) for the library, so the library is not tied to one exact compiler version.
@@ -38,6 +40,12 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - Waveforms always generate 32-bit float samples at the device's sample rate.
 - Linux builds link `pthread`, `libm` and `libdl`.
 - Updated miniaudio to 0.11.26.
+- **Breaking:** The Visual Studio solution is now `Audio.slnx` (the XML solution format of Visual Studio 2026) instead of `Audio.sln`, and the projects use the Visual Studio 2026 toolset (v145). Visual Studio 2022 can't open `.slnx` solutions by default; use `GenerateProjectFiles.bat` instead. If the projects are opened in Visual Studio 2022, they use its own toolset (v143).
+- **Breaking:** The examples moved from `example` to `examples`, with a folder per example: `getting_started` (was `example`), `fade` (was `fadeExample`) and `c_api` (was `cExample`). Their audio files are in `examples/assets`, which is the working directory when they run from Visual Studio.
+- `Audio.slnx` contains all three examples, not only `getting_started`, in an `examples` solution folder. `getting_started` is the startup project, so F5 runs it.
+- Release packages are built with Visual Studio 2022, so they work with Visual Studio 2022 and newer. The compiler is no longer part of the package name, and the platform is named `windows-x64` instead of `Windows-AMD64` (for example `Audio-2.0.0-windows-x64-static.zip`).
+- `GeneratePackages.bat` builds the packages with the Visual Studio 2022 toolset when it is available (warning otherwise), uses the CMake that comes with Visual Studio if CMake is not installed, works from any folder, and collects the packages in `out\packages`.
+- **Breaking:** The vcpkg port is renamed from `audio` to `3dgep-audio`. It now depends on vcpkg's `miniaudio` and `stb` ports, uses the triplet's C runtime, and installs PDBs and the usage file.
 
 ### Removed
 
@@ -52,7 +60,9 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - A sound that failed to load no longer appears valid (`if ( sound )` now returns `false`).
 - `Sound::setPitch` ignores pitch values of 0 or less.
 - The documentation of `Sound::setPitch` stated that the pitch must be greater than 1 (it must be greater than 0).
-- `GenerateProjectFiles.bat` used CMake presets that no longer existed after the presets were renamed in 1.1.0. It now uses the `vs18-static` and `vs17-static` presets and includes the examples.
+- With single-configuration generators (such as Unix Makefiles or Ninja), Debug and Release builds wrote to the same `lib` and `bin` folders and overwrote each other. All generators now use `lib/<Config>` and `bin/<Config>`.
+- The Visual Studio projects put their intermediate files in an `Audio` folder (and `example\x64`) inside the repository. They now go to `out\obj`, which is ignored by git. The projects also build on their own, outside the solution.
+- `GenerateProjectFiles.bat` used CMake presets that no longer existed after the presets were renamed in 1.1.0. It now uses the `vs18-static` and `vs17-static` presets and includes the examples. It also requires only the "Desktop development with C++" workload (instead of "Game development with C++"), uses the CMake that comes with Visual Studio if CMake is not installed, and no longer fails with a syntax error when no Visual Studio is found.
 
 ## [1.1.0] - 2026-09-09
 

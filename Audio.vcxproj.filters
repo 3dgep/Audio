@@ -14,28 +14,28 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="inc\Audio\audio.h">
+    <ClInclude Include="include\Audio\audio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Audio.hpp">
+    <ClInclude Include="include\Audio\Audio.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Config.hpp">
+    <ClInclude Include="include\Audio\Config.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Device.hpp">
+    <ClInclude Include="include\Audio\Device.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Listener.hpp">
+    <ClInclude Include="include\Audio\Listener.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Sound.hpp">
+    <ClInclude Include="include\Audio\Sound.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Vector.hpp">
+    <ClInclude Include="include\Audio\Vector.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Waveform.hpp">
+    <ClInclude Include="include\Audio\Waveform.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\audio_internal.h">

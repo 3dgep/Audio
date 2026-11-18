@@ -2,7 +2,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO 3dgep/Audio
     REF "v${VERSION}"
-    SHA512 a427aebff3655b672ef45bc6ea6cdc92373407847f41318aef52394362ebed231af65eae7fa4d86e070ad7bb6fbd9aadbe239ba52c0af15c9be15b2ca6fceb15
+    SHA512 0 # Replace with the SHA512 that vcpkg reports once the v2.0.0 tag exists.
     HEAD_REF main
 )
 
@@ -11,9 +11,14 @@ vcpkg_cmake_configure(
     OPTIONS
         -DAUDIO_BUILD_EXAMPLES=OFF
         -DAUDIO_INSTALL_CONFIG_SUBDIRS=OFF
+        # Use vcpkg's miniaudio and stb ports instead of the copies in the repository.
+        -DAUDIO_USE_SYSTEM_DEPS=ON
+        # Use the C runtime selected by the triplet.
+        -DAUDIO_MSVC_ANY_CRT=OFF
 )
 
 vcpkg_cmake_install()
+vcpkg_copy_pdbs()
 
 vcpkg_cmake_config_fixup(
     PACKAGE_NAME Audio
@@ -22,4 +27,5 @@ vcpkg_cmake_config_fixup(
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
 vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
