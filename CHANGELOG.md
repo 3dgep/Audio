@@ -52,6 +52,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - A sound that failed to load no longer appears valid (`if ( sound )` now returns `false`).
 - `Sound::setPitch` ignores pitch values of 0 or less.
 - The documentation of `Sound::setPitch` stated that the pitch must be greater than 1 (it must be greater than 0).
+- `GenerateProjectFiles.bat` used CMake presets that no longer existed after the presets were renamed in 1.1.0. It now uses the `vs18-static` and `vs17-static` presets and includes the examples.
 
 ## [1.1.0] - 2026-09-09
 

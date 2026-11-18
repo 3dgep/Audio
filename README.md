@@ -3,109 +3,81 @@
 
 [![Alt text](docs/images/Audio-Library.png)](https://youtu.be/sXPN-QH1kwg)
 
-A super minimalistic C/C++ audio library built on [miniaudio](https://miniaud.io/index.html).
+A super minimalistic C/C++ audio library for games, built on [miniaudio](https://miniaud.io/index.html).
+
+```cpp
+#include <Audio/Audio.hpp>
+
+int main()
+{
+    Audio::Sound music { "music.ogg", Audio::Sound::Type::Music };
+    music.setLooping( true );
+    music.play();
+
+    Audio::playSound( "coin.wav" );  // Fire and forget.
+    ...
+}
+```
+
+There is no audio device to create or destroy: it is created the first time you play a sound and shut down automatically when your program exits.
+
+## Contents
+
+* [Features](#features)
+* [Requirements](#requirements)
+* [Getting the Library](#getting-the-library)
+* [Building From Source](#building-from-source)
+* [Integrating Into Your Own Project (Manual)](#integrating-into-your-own-project-manual)
+* [Playing Sounds](#playing-sounds)
+* [Playing Music](#playing-music)
+* [Spatial Audio](#spatial-audio)
+* [Playing Waveforms](#playing-waveforms)
+* [Using a Specific Device](#using-a-specific-device)
+* [Using the C API](#using-the-c-api)
+* [Upgrading From v1](#upgrading-from-v1)
 
 ## Features
 
-Should work on most platforms, but I've only tested it on Windows.
+* Play sound effects and stream background music.
+* Supported file types:
+  * WAV (`.wav`): Waveform Audio File Format
+  * MP3 (`.mp3`): MPEG-1/2 Audio Layer III
+  * FLAC (`.flac`): Free Lossless Audio Codec
+  * OGG (`.ogg`): Free, Open Container Format ([Xiph.org](https://xiph.org/))
+* Volume, panning, pitch, looping, fading and scheduled start/stop.
+* 3D (spatial) audio with up to 4 listeners.
+* Generated waveforms (sine, square, triangle and sawtooth) for retro sound effects. See [MarioCoin.cpp](example/MarioCoin.cpp).
+* A C API and a C++ API.
 
-The library is written in C99 and exposes a C API ([audio.h](inc/Audio/audio.h)) with a thin, header-only C++ wrapper on top. Include [Audio.hpp](inc/Audio/Audio.hpp) to get the whole C++ API, or include only what you need (for example `<Audio/Sound.hpp>`). Because only C crosses the library boundary, a compiled `Audio.lib` works with any version of Visual Studio's C++ standard library and can be linked into both Debug and Release builds of your game, with either the static (`/MT`) or DLL (`/MD`) C runtime.
+The library is written in C99 and exposes a C API ([audio.h](inc/Audio/audio.h)) with a thin, header-only C++ wrapper on top. Include [Audio.hpp](inc/Audio/Audio.hpp) to get the whole C++ API, or include only what you need (for example `<Audio/Sound.hpp>`).
 
-There is no need to create or destroy an audio device: it is created the first time you play a sound and shut down automatically when your program exits.
+Because only C crosses the library boundary, a compiled `Audio.lib`:
 
-The `Audio::Sound` class can be used to play one-shot sound effects and can also be used to stream background music to minimize memory use.
+* can be linked into both **Debug** and **Release** builds of your game,
+* works with both the static (`/MT`) and DLL (`/MD`) C runtime,
+* does not depend on the version of the C++ standard library you use.
 
-The `Sound` class supports the following file types:
+It should work on most platforms, but I've only tested it on Windows.
 
-* WAV (`.wav`): Waveform Audio File Format
-* MP3 (`.mp3`): MPEG-1/2 Audio Layer III
-* FLAC (`.flac`): Free Lossless Audio Codec
-* OGG (`.ogg`): Free, Open Container Format ([Xiph.org](https://xiph.org/))
+## Requirements
 
-The `Audio::Waveform` class can be used to play waveform sounds. See [MarioCoin.hpp](example/MarioCoin.hpp) and [MarioCoin.cpp](example/MarioCoin.cpp) for an example of creating a complex sound effect using Waveforms.
+* A C++17 compiler for the C++ API (or a C99 compiler for the C API).
+* To build from source:
+  * Windows: Visual Studio 2022 or newer, with the **Game development with C++** workload (the **Desktop development with C++** workload also works, except for [GenerateProjectFiles.bat](GenerateProjectFiles.bat)).
+  * CMake 3.25 or newer. CMake 4.0 or newer is needed to build the examples.
 
-## Installation
+## Getting the Library
 
-This project comes with both a Visual Studio 2022 solution and project file and a `CMakeLists.txt` file for use with CMake.
+There are several ways to add the Audio library to your project. If you are not using CMake, see [Integrating Into Your Own Project (Manual)](#integrating-into-your-own-project-manual).
 
-### Visual Studio 2022
+### Prebuilt Packages
 
-Open the `Audio.sln` file in the root directory of this repository. You should see two projects in the solution:
+Prebuilt packages are available on the [Releases](https://github.com/3dgep/Audio/releases) page:
 
-1. Audio (Static library): This project generates the `Audio.lib` file that you must link to in your own project.
-2. example (Executable): This is an example showing how to work with the Audio library. You can inspect the project settings of this project to see how to integrate the `Audio.lib` file into your own projects.
+* `Audio-<version>-<platform>-<compiler>-static.zip`: static library (`.lib`)
+* `Audio-<version>-<platform>-<compiler>-shared.zip`: shared library (`.dll` + import `.lib`)
 
-Running the example project in Visual Studio should play a narration and show a few examples of working with `Waveform`s.
-
-### CMake
-
-#### Windows
-
-You should have (at least) CMake 3.23.0 installed (and added to your `PATH` environment variable in Windows). If you don't have CMake, please download it from [cmake.org](https://cmake.org/download/). Make sure you download the installer for your platform (don't download the source distributions).
-
-To generate the Visual Studio solution and project files, run the [GenerateProjectFiles.bat](GenerateProjectFiles.bat) batch file on Windows. This script uses [vswhere](https://github.com/microsoft/vswhere) to detect the latest version of Visual Studio you have installed and will generate the solution and project files for the version of Visual Studio you have installed.
-
-Alternatively, you can open the Audio folder directly in the CMake GUI to generate the solution and project files:
-
-![CMake GUI](docs/images/CMakeGUI.png)
-
-There is a preset (use the preset drop-down menu in the CMake GUI) for Visual Studio 2019 and 2022 that you can use to generate the solution and project files.
-
-In the CMake GUI, use the **Configure**, **Generate**, and **Open Project** buttons (in that order) to generate and open the Visual Studio solution file.
-
-#### Linux Based Platforms
-
-CMake can usually detect your build toolchain on Linux based operating systems. To configure and build this project on Linux run the following commands from this project's root folder:
-
-```bash
-mkdir build
-cd build
-cmake ../
-cmake --build .
-```
-
-This will build the **Debug** build by default. To build the **Release** library, use the following command:
-
-```bash
-cmake --build . --config Release
-```
-
-> **Note**: Do not distribute the CMake generated project files! These files contain absolute paths and will only work for your file structure.
-
-## Build
-
-Open either the existing [Audio.sln](Audio.sln) file, or the CMake generated solution file in Visual Studio.
-
-![Visual Studio 2022](docs/images/Visual%20Studio%202022.png)
-
-Select **Build > Build Solution**  (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>) from the main menu to build the `Audio.lib` and `example.exe`.
-
-The `Audio.lib` file will go to the `lib` folder in the root of this repository depending on the current configuration.
-
-* **Debug**: `lib\Debug\Audio.lib`
-* **Release**: `lib\Release\Audio.lib`
-
-> **Note**: Do not distribute the generated library file with your project or commit it to GitHub. The library file should always be compiled for the toolchain version where it will be used.
-
-The `example.exe` file will be placed in the `bin` folder.
-
-* **Debug**: `bin\Debug\example.exe`
-* **Release**: `bin\Release\example.exe`
-
-The example project should run directly from Visual Studio, but the example tries to open the [narrator.flac](example/narrator.flac) audio file in the [example](example/) folder. When running the `example.exe` file directly from the command line, you should also specify the [example](example/) folder as the current working directory when running:
-
-```sh
-.\bin\Release\example.exe -cwd ".\example"
-```
-
-If you see `Failed to initialize sound from source: narrator.flac` printed to the console, then the wrong working directory is being used to run the example. In this case, you will still hear the waveforms (since they don't rely on loading any files from disk), but you won't hear the narrator audio file.
-
-## Using Prebuilt Packages
-
-Prebuilt packages are available on the [Releases](https://github.com/3dgep/Audio/releases) page. Download the ZIP that matches your compiler and configuration:
-
-* `Audio-<version>-<platform>-<compiler>-static.zip` — static library (`.lib`)
-* `Audio-<version>-<platform>-<compiler>-shared.zip` — shared library (`.dll` + import `.lib`)
+The `<compiler>` part of the name is the Visual Studio toolset the package was built with. Visual Studio can link libraries built with the same or an *older* toolset, but not with a newer one. For example, a package built with Visual Studio 2026 (`msvc-v145`) can't be used with Visual Studio 2022. In that case, [build the library from source](#building-from-source).
 
 Each package contains both Debug and Release binaries:
 
@@ -142,25 +114,27 @@ Shared packages additionally contain:
 │       └── Audio.dll
 ```
 
-### Using with CMake (Recommended)
+> **Note**: When using the shared library, copy `Audio.dll` next to your game's executable.
 
-Extract the package and use `find_package` to integrate it into your CMake project:
+### CMake: find_package
+
+Extract a prebuilt package and use `find_package` to add it to your CMake project:
 
 ```cmake
-# Point CMake to the extracted package
+# Point CMake to the extracted package.
 list(APPEND CMAKE_PREFIX_PATH "path/to/Audio-<version>-<platform>-<compiler>-static")
 
 find_package(Audio REQUIRED)
 
-add_executable(MyApp main.cpp)
-target_link_libraries(MyApp PRIVATE Audio::Audio)
+add_executable(MyGame main.cpp)
+target_link_libraries(MyGame PRIVATE Audio::Audio)
 ```
 
-CMake will automatically set up include paths and link the correct library for your build configuration.
+CMake will automatically set up the include paths and link the correct library for your build configuration.
 
-### Using with FetchContent
+### CMake: FetchContent
 
-You can also pull the library directly from GitHub without downloading a package:
+You can also build the library as part of your project, directly from GitHub:
 
 ```cmake
 include(FetchContent)
@@ -173,13 +147,96 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Audio)
 
-add_executable(MyApp main.cpp)
-target_link_libraries(MyApp PRIVATE Audio::Audio)
+add_executable(MyGame main.cpp)
+target_link_libraries(MyGame PRIVATE Audio::Audio)
 ```
+
+### vcpkg
+
+This repository contains a vcpkg port in the [ports](ports/) folder. Use it as an overlay port:
+
+```sh
+vcpkg install audio --overlay-ports=path/to/Audio/ports
+```
+
+Then use it in CMake:
+
+```cmake
+find_package(Audio CONFIG REQUIRED)
+target_link_libraries(MyGame PRIVATE Audio::Audio)
+```
+
+## Building From Source
+
+### Visual Studio
+
+Open the [Audio.sln](Audio.sln) file in the root directory of this repository. You should see two projects in the solution:
+
+1. **Audio** (static library): This project builds the `Audio.lib` file that you must link to in your own project.
+2. **example** (executable): An example showing how to work with the Audio library. You can inspect the project settings of this project to see how to integrate the `Audio.lib` file into your own projects.
+
+![Visual Studio 2022](docs/images/Visual%20Studio%202022.png)
+
+Select **Build > Build Solution** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>) from the main menu to build `Audio.lib` and `example.exe`.
+
+> **Note**: The solution was made with Visual Studio 2022. If you open it with a newer version of Visual Studio, it may ask you to retarget the projects. Click **OK** to upgrade them.
+
+### CMake on Windows
+
+To generate a Visual Studio solution with CMake, run the [GenerateProjectFiles.bat](GenerateProjectFiles.bat) batch file. This script uses [vswhere](https://github.com/microsoft/vswhere) to detect the latest version of Visual Studio you have installed, generates the solution (including the examples) in the `out\build` folder, and opens it.
+
+Alternatively, open the Audio folder in the CMake GUI (or run [OpenInCMake.bat](OpenInCMake.bat)):
+
+![CMake GUI](docs/images/CMakeGUI.png)
+
+Select a preset from the preset drop-down menu. There are presets for Visual Studio 2026 (`vs18-*`), Visual Studio 2022 (`vs17-*`), Ninja (`ninja-*`) and Clang (`clang-*`), for both the static (`*-static`) and shared (`*-shared`) library. Turn on `AUDIO_BUILD_EXAMPLES` to also build the examples. Then use the **Configure**, **Generate**, and **Open Project** buttons (in that order) to generate and open the Visual Studio solution.
+
+You can also use the presets from the command line:
+
+```sh
+cmake --preset vs18-static -DAUDIO_BUILD_EXAMPLES=ON
+cmake --build --preset vs18-static-release
+```
+
+### CMake on Linux
+
+CMake can usually detect your build toolchain on Linux. To configure and build the Release library and the examples, run the following commands from this project's root folder:
+
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DAUDIO_BUILD_EXAMPLES=ON
+cmake --build build
+```
+
+Use `-DCMAKE_BUILD_TYPE=Debug` for a Debug build, and add `-DBUILD_SHARED_LIBS=ON` to build a shared library.
+
+No audio development packages are needed: miniaudio loads the system's audio libraries (for example PulseAudio or ALSA) at runtime.
+
+> **Note**: Do not distribute the CMake generated project files! These files contain absolute paths and will only work for your file structure.
+
+### Build Output
+
+The library goes to the `lib` folder in the root of this repository, and the examples go to the `bin` folder:
+
+* **Debug**: `lib\Debug\Audio.lib` and `bin\Debug\example.exe`
+* **Release**: `lib\Release\Audio.lib` and `bin\Release\example.exe`
+
+On Linux, the static library is `libAudio.a` (in `lib`) and the shared library is `libAudio.so` (in `bin`, next to the executables). With a single-configuration generator like Unix Makefiles, there are no `Debug` and `Release` subfolders.
+
+The CMake build also builds `fadeExample.exe` (fading sounds in and out) and `cExample.exe` (using the C API).
+
+### Running the Examples
+
+The examples load audio files from the [example](example/) folder. They run directly from Visual Studio, but when running them from the command line, use the `-cwd` option to set the working directory:
+
+```sh
+.\bin\Release\example.exe -cwd ".\example"
+```
+
+If you see `[Audio] Error: Failed to load sound 'narrator.flac'` printed to the console, the wrong working directory is being used. You will still hear the waveforms (they don't load any files), but you won't hear the narrator.
 
 ## Integrating Into Your Own Project (Manual)
 
-To use the Audio library in your own projects, copy the `lib` and `inc` folders to a folder in your own project. For example, suppose you keep your 3rd party files in a folder called `extern` or `3rdParty`.
+To use the Audio library in a Visual Studio project without CMake, copy the `lib` and `inc` folders to a folder in your own project. For example, suppose you keep your 3rd party files in a folder called `extern` or `3rdParty`.
 
 Create a subfolder called `Audio` and copy the contents of the `lib` and `inc` folders to the `Audio` subfolder. You should have a folder structure that is similar to what is shown in the screenshot below:
 
@@ -210,7 +267,9 @@ Or if you prefer a textual view:
 │   │   │   │   │   ├── Audio.pdb
 ```
 
-Alternatively, you can just copy the contents of the [src](src/) folder to where you keep your source files (`.c`, or `.cpp` files) for your game project, and the contents of the [inc](inc/) folder to where you keep your header files (`.h` or `.hpp` files), then add all of the `.c` files directly to your game project. Doing this does not require to generate the `Audio.lib` file and you can skip the next section.
+> **Tip**: Both the Debug and the Release `Audio.lib` work in any configuration of your game. Use the Debug library if you want to step into the Audio library's code while debugging.
+
+Alternatively, copy the contents of the [src](src/) folder to where you keep your source files and the contents of the [inc](inc/) folder to where you keep your header files, then add all of the `.c` files to your game project. In that case, you don't need `Audio.lib`, and you can skip the [Linker Settings](#linker-settings) section.
 
 ### C/C++ Settings
 
@@ -226,9 +285,11 @@ In the **Additional Include Directories**, specify the folder to the `Audio\inc`
 
 > **Note**: Make sure you set the **Configuration** to **All Configurations** to apply the include directory to all build configurations!
 
+The C++ API requires C++17 or newer. Check that the **C++ Language Standard** setting (**C/C++ > Language**) is set to **ISO C++17 Standard** or newer.
+
 ### Linker Settings
 
-You must tell the linker where to find the `Audio.lib` file depending on the build configuration being used.
+You must tell the linker where to find the `Audio.lib` file.
 
 Open the project settings for your game project (either by right-clicking on the project in Visual Studio, or select **Project > Properties** from the main menu in Visual Studio).
 
@@ -250,7 +311,7 @@ You should be able to compile your project with the Audio library. If you have a
 
 ## Playing Sounds
 
-The very easiest way to play a sound effect is "fire and forget". The same sound can overlap itself, but you can't stop it once it has started:
+The easiest way to play a sound effect is "fire and forget". The same sound can overlap itself, but you can't stop it once it has started:
 
 ```cpp
 #include <Audio/Audio.hpp>
@@ -258,12 +319,12 @@ The very easiest way to play a sound effect is "fire and forget". The same sound
 Audio::playSound( "explosion.wav" );
 ```
 
-For more control, load a sound effect file into an `Audio::Sound` object and use the `Sound::play` or `Sound::replay` (the latter will automatically force the sound to play from the beginning in case it is already playing).
+For more control, load a sound effect file into an `Audio::Sound` object:
 
 ```cpp
 #include <Audio/Audio.hpp>
 ...
-// Create a Sound effect from a wav file:
+// Load a sound effect from a wav file:
 Audio::Sound coin { "coin.wav" };
 ```
 
@@ -274,21 +335,31 @@ Later, the sound effect can be played using the `Sound::play` method:
 coin.play();
 ```
 
-Or, if there is a chance the sound is already playing, it will not be restarted using the `Sound::play` method. This can happen if you play many coin sounds in rapid succession. To force the sound effect to play from the beginning, use the `Sound::replay` method:
+If the sound is already playing, `Sound::play` will not restart it. This can happen if you play many coin sounds in rapid succession. To force the sound effect to play from the beginning, use the `Sound::replay` method:
 
 ```cpp
 // Force the coin sound to play from the beginning:
 coin.replay();
 ```
 
-Use the `Sound::stop` method to force the sound effect to stop playing:
+Use the `Sound::stop` method to stop the sound effect:
 
 ```cpp
 // Stop the sound effect:
-coin.stop()
+coin.stop();
 ```
 
-> **Note**: Stopping a sound effect does not automatically rewind the sound effect to the beginning of the sound. Use the `Sound::seek` method to seek to the beginning of the sound. You can also use `Sound::replay` to automatically rewind the sound to the beginning.
+> **Note**: Stopping a sound effect does not rewind it to the beginning. Calling `Sound::play` again continues where it stopped. Use `Sound::seek( 0 )` to rewind the sound, or `Sound::replay` to rewind and play it.
+
+### Volume, Pan and Pitch
+
+```cpp
+coin.setVolume( 0.5f );  // 0 is silent, 1 is 100%, above 1 amplifies.
+coin.setPan( -1.0f );    // -1 is left, 0 is centered, 1 is right.
+coin.setPitch( 1.5f );   // 1 is the original pitch. Higher values sound higher.
+
+Audio::setMasterVolume( 0.8f );  // The volume of all sounds.
+```
 
 ### Copying Sounds
 
@@ -297,7 +368,7 @@ Copying an `Audio::Sound` does not copy the sound: just like objects in C#, Java
 ```cpp
 void playHitSound( Audio::Sound sound )
 {
-    sound.play(); // Keeps playing after this function returns.
+    sound.play();  // Keeps playing after this function returns.
 }
 ```
 
@@ -315,17 +386,56 @@ if ( !coin )
 }
 ```
 
-## Spatial Audio
+Functions that can fail return an `Audio::Result`:
 
-Sound effects can make use of spatial sound effects. A `Sound` has a position in 3D space relative to a `Listener`. In order to hear the correct spatial sounds, both the `Sound` and `Listener` must be set the correct position.
+```cpp
+Audio::Sound coin;
+Audio::Result result = coin.load( "coin.wav" );
+if ( result != Audio::Result::Success )
+{
+    std::cout << "Could not load coin.wav: " << Audio::toString( result ) << std::endl;
+}
+```
+
+## Playing Music
+
+Short sound effects are loaded into memory and decoded when they are created. For longer sounds like background music, it is better to stream the file and decode it "on the fly" while it plays. This reduces the time it takes to load the file, and the amount of memory needed to store it.
 
 ```cpp
 #include <Audio/Audio.hpp>
 ...
-// Create a Sound effect from a wav file:
+// Load background music, streamed while it plays:
+Audio::Sound music { "Background_Music.mp3", Audio::Sound::Type::Music };
+music.setLooping( true );
+music.play();
+```
+
+The only difference between loading background music and sound effects is the `Audio::Sound::Type::Music` parameter (`Type::Stream` and `Type::Background` are aliases). Playing, stopping, and restarting music works the same as for sound effects.
+
+### Fading
+
+Use `Sound::setFade` to fade a sound in or out:
+
+```cpp
+using namespace std::chrono_literals;
+
+music.setFade( 0.0f, 2s );        // Fade out from the current volume over 2 seconds.
+music.setFade( 0.0f, 1.0f, 2s );  // Fade in from silence over 2 seconds.
+```
+
+See [fadeExample.cpp](example/fadeExample.cpp) for more examples.
+
+## Spatial Audio
+
+Sound effects can be positioned in 3D space. What you hear depends on the position of the sound relative to a `Listener` (usually the player or the camera). In order to hear the correct spatial sounds, both the `Sound` and the `Listener` must be set to the correct position.
+
+```cpp
+#include <Audio/Audio.hpp>
+...
+// Load a sound effect from a wav file:
 Audio::Sound coin { "coin.wav" };
 // Set the position of the sound in the world.
-coin.setPosition( {x, y, z} );
+coin.setPosition( { x, y, z } );
 ...
 // Get a listener.
 Audio::Listener listener = Audio::getListener();
@@ -343,48 +453,67 @@ Spatial audio allows you to specify the attenuation model for the sound effect. 
 3. **Linear**: Linear attenuation falloff (less natural, but might be better for 2D sound effects).
 4. **Exponential**: Exponential attenuation.
 
-The code snippet shows how to disable attenuation for a sound effect:
+This code snippet shows how to disable attenuation for a sound effect:
 
 ```cpp
-sound.setAttenuationModel( Audio::Sound::AttenuationModel::Off );
+coin.setAttenuationModel( Audio::Sound::AttenuationModel::Off );
 ```
 
-By default, both sounds and the listener have a position of {0, 0, 0}. In this case, the sounds will not exhibit any spatial attenuation.
+By default, both sounds and the listener have a position of { 0, 0, 0 }. In this case, the sounds will not exhibit any spatial attenuation.
 
-## Playing Music
+> **Note**: Music (`Sound::Type::Music`) is not spatialized.
 
-Short, one-shot sound effects are loaded into memory and decoded on creation. To minimize the impact on loading larger files, it is recommended to stream in the files and decode the audio file "on the fly" while playing. The reduces the time to load the file as well as reduced the amount of memory required to store the audio file.
+### Multiple Listeners
+
+There are 4 listeners (`Audio::getListener( 0 )` to `Audio::getListener( 3 )`), for example for split-screen games. By default, a sound is heard by the closest listener. Use `Sound::setPinnedListener` to make a sound always use a specific listener:
 
 ```cpp
-#include <Audio/Audio.hpp>
-...
-// Load background music, streamed while it plays:
-Audio::Sound bgMusic { "Background_Music.mp3", Audio::Sound::Type::Music };
+coin.setPinnedListener( Audio::getListener( 1 ) );
 ```
-
-The only difference between loading background music and one-shot sound effects is the additional `Audio::Sound::Type::Music` parameter in the constructor (`Type::Stream` and `Type::Background` are aliases). Playing, stopping, and restarting of streamed sounds is the same as one-shot sound effects.
 
 ## Playing Waveforms
 
-An `Audio::Waveform` class can be used to play waveform audio. Many early video games simulated sound effects using waveforms or [MIDI](https://en.wikipedia.org/wiki/MIDI) audio because it was much easier to store and synthesize the audio than use WAV files.
+The `Audio::Waveform` class can be used to play waveform audio. Many early video games simulated sound effects using waveforms or [MIDI](https://en.wikipedia.org/wiki/MIDI) audio because it was much easier to store and synthesize the audio than use WAV files.
 
-The `Audio::Waveform` class has two properties that can be modified at runtime to achieve the desired sound effect:
+There are 4 types of waveforms: `Sine`, `Square`, `Triangle` and `Sawtooth`. A waveform has two properties that can be modified at runtime to achieve the desired sound effect:
 
 * **Frequency**: The "speed" of the waveform determines the apparent pitch of the sound. This value is measured in Hz.
-* **Amplitude**: The "strength" of the sound and determines how loud it sounds. This value is a floating-point value that is measured in the range from 0 (no sound) to 1 (100% volume). Amplitude is modulated by the master volume (see `Audio::setMasterVolume`).
+* **Amplitude**: The "strength" of the sound and determines how loud it sounds. This value is measured in the range from 0 (no sound) to 1 (100% volume). Amplitude is modulated by the master volume (see `Audio::setMasterVolume`).
 
-A waveform is silent until you call `Waveform::start`.
+A waveform is silent until you call `Waveform::start`:
 
 ```cpp
+// A square wave with an amplitude of 0.2, at 440 Hz.
 Audio::Waveform beep { Audio::Waveform::Type::Square, 0.2f, 440.0f };
 beep.start();
+...
+beep.setFrequency( 880.0f );  // One octave higher.
+...
+beep.stop();
 ```
 
-See [MarioCoin.cpp](example/MarioCoin.cpp) for an example of how to use a Waveform.
+See [MarioCoin.cpp](example/MarioCoin.cpp) for an example of creating a more complex sound effect with a waveform.
+
+## Using a Specific Device
+
+Most games never need this: sounds, waveforms and listeners use the default audio device. If you need control over the device's settings, create an `Audio::Device` and pass it when creating sounds and waveforms:
+
+```cpp
+Audio::Device::Config config;
+config.listenerCount = 2;
+config.sampleRate    = 48000;
+
+Audio::Device device { config };
+
+Audio::Sound   coin { device, "coin.wav" };
+Audio::Listener listener = device.getListener( 0 );
+```
+
+Sounds and waveforms keep their device alive, so the `Device` object may be destroyed before the sounds created with it.
 
 ## Using the C API
 
-The C API in [audio.h](inc/Audio/audio.h) can be used from C, or from any language that can call C functions. Functions that take an `audio_device*` accept `NULL` to use the default device. See [cExample.c](example/cExample.c) for a complete example.
+The C API in [audio.h](inc/Audio/audio.h) can be used from C, or from any language that can call C functions. Functions that take an `audio_device*` accept `NULL` to use the default device. Calling a function with a `NULL` sound or waveform is safe and does nothing. See [cExample.c](example/cExample.c) for a complete example.
 
 ```c
 #include <Audio/audio.h>
@@ -398,10 +527,16 @@ if ( audio_sound_create( NULL, "music.ogg", AUDIO_SOUND_FLAGS_MUSIC, &music ) ==
 }
 ...
 audio_sound_destroy( music );
-audio_shutdown(); // Optional when the program exits normally.
+audio_shutdown();  // Optional when the program exits normally.
 ```
 
+Errors are printed to `stderr` by default. Use `audio_set_log_callback` to send them somewhere else, or pass `NULL` to disable logging.
+
+> **Note**: When you load the shared library at runtime (with `LoadLibrary` or `dlopen`), call `audio_shutdown` before unloading it.
+
 ## Upgrading From v1
+
+See the [CHANGELOG](CHANGELOG.md) for all changes. The most important ones:
 
 * The headers have the same names as in v1 (`<Audio/Sound.hpp>`, `<Audio/Device.hpp>`, ...), so existing `#include` lines keep working. You can also include `<Audio/Audio.hpp>` to get everything.
 * `Audio::Device::playSound`, `setMasterVolume` and `getListener` are now free functions: `Audio::playSound`, `Audio::setMasterVolume` and `Audio::getListener`.

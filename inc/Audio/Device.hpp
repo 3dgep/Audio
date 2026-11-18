@@ -40,8 +40,18 @@ public:
         create( config );
     }
 
+    /// Create (or re-create) this device with the default configuration.
+    ///
+    /// Note: this is an overload rather than a `= {}` default argument on the function
+    /// below. GCC and Clang reject a default argument that uses a nested class with
+    /// default member initializers inside the enclosing class (CWG 1397).
+    Result create()
+    {
+        return create( Config {} );
+    }
+
     /// Create (or re-create) this device.
-    Result create( const Config& config = {} )
+    Result create( const Config& config )
     {
         reset();
 

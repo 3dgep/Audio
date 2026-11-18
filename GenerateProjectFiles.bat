@@ -26,11 +26,12 @@ REM ****************************************************************************
 
 REM This script will generate the solution files for the currently installed version
 REM of Visual Studio detected on the user's computer. Supported version of Visual Studio are:
-REM 	Visual Studio 2022
-REM     Visual Studio 2019
-REM 
-REM The solution files will be created in out\build\vs16 if Visual Studio 2019 was detected or
-REM in out\build\vs17 if Visual Studio 2022 was detected.
+REM     Visual Studio 2026
+REM     Visual Studio 2022
+REM
+REM The solution files (including the example projects) will be created in
+REM out\build\vs18-static if Visual Studio 2026 was detected or in
+REM out\build\vs17-static if Visual Studio 2022 was detected.
 
 PUSHD "%~dp0"
 
@@ -43,16 +44,12 @@ FOR /F "usebackq delims=." %%i IN (`%VSWHERE% -latest -prerelease -requires Micr
 )
 
 IF %VS_VERSION% == 18 (
-    SET CMAKE_PRESET="vs18"
-    SET CMAKE_BINARY_DIR=out\build\vs18
+    SET CMAKE_PRESET="vs18-static"
+    SET CMAKE_BINARY_DIR=out\build\vs18-static
     SET SOLUTION_FILE=Audio.slnx
 ) ELSE IF %VS_VERSION% == 17 (
-    SET CMAKE_PRESET="vs17"
-    SET CMAKE_BINARY_DIR=out\build\vs17
-    SET SOLUTION_FILE=Audio.sln
-) ELSE IF %VS_VERSION% == 16 (
-    SET CMAKE_PRESET="vs16"
-    SET CMAKE_BINARY_DIR=out\build\vs16
+    SET CMAKE_PRESET="vs17-static"
+    SET CMAKE_BINARY_DIR=out\build\vs17-static
     SET SOLUTION_FILE=Audio.sln
 ) ELSE (
     ECHO.
@@ -62,7 +59,7 @@ IF %VS_VERSION% == 18 (
     ECHO *                                                                     *
     ECHO ***********************************************************************
     ECHO No compatible version of Microsoft Visual Studio detected.
-    ECHO Please make sure you have Visual Studio 2019 ^(or newer^) and the 
+    ECHO Please make sure you have Visual Studio 2022 ^(or newer^) and the
     ECHO "Game Development with C++" workload installed before running this script.
     ECHO Go to https://www.visualstudio.com/downloads/ to download the latest version of Visual Studio.
     ECHO. 
@@ -71,7 +68,7 @@ IF %VS_VERSION% == 18 (
 )
 
 :GenerateProjectFiles
-%CMAKE% --preset %CMAKE_PRESET% -Wno-dev
+%CMAKE% --preset %CMAKE_PRESET% -DAUDIO_BUILD_EXAMPLES=ON -Wno-dev
 
 IF %ERRORLEVEL% NEQ 0 (
     PAUSE
