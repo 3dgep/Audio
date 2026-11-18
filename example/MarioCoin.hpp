@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Audio/Waveform.hpp>
+#include <Audio/Audio.hpp>
 
 class MarioCoin
 {

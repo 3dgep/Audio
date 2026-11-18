@@ -3,11 +3,15 @@
 
 [![Alt text](docs/images/Audio-Library.png)](https://youtu.be/sXPN-QH1kwg)
 
-A super minimalistic C++ audio library built on [miniaudio](https://miniaud.io/index.html).
+A super minimalistic C/C++ audio library built on [miniaudio](https://miniaud.io/index.html).
 
 ## Features
 
 Should work on most platforms, but I've only tested it on Windows.
+
+The library is written in C99 and exposes a C API ([audio.h](inc/Audio/audio.h)) with a thin, header-only C++ wrapper on top. Include [Audio.hpp](inc/Audio/Audio.hpp) to get the whole C++ API, or include only what you need (for example `<Audio/Sound.hpp>`). Because only C crosses the library boundary, a compiled `Audio.lib` works with any version of Visual Studio's C++ standard library and can be linked into both Debug and Release builds of your game, with either the static (`/MT`) or DLL (`/MD`) C runtime.
+
+There is no need to create or destroy an audio device: it is created the first time you play a sound and shut down automatically when your program exits.
 
 The `Audio::Sound` class can be used to play one-shot sound effects and can also be used to stream background music to minimize memory use.
 
@@ -108,6 +112,8 @@ Each package contains both Debug and Release binaries:
 ```txt
 ├── include
 │   └── Audio
+│       ├── audio.h
+│       ├── Audio.hpp
 │       ├── Config.hpp
 │       ├── Device.hpp
 │       ├── Listener.hpp
@@ -162,7 +168,7 @@ include(FetchContent)
 FetchContent_Declare(
     Audio
     GIT_REPOSITORY https://github.com/3dgep/Audio.git
-    GIT_TAG        v1.1.0
+    GIT_TAG        v2.0.0
 )
 
 FetchContent_MakeAvailable(Audio)
@@ -187,6 +193,8 @@ Or if you prefer a textual view:
 │   │   ├── Audio
 │   │   │   ├── inc
 │   │   │   │   ├── Audio
+│   │   │   │   │   ├── audio.h
+│   │   │   │   │   ├── Audio.hpp
 │   │   │   │   │   ├── Config.hpp
 │   │   │   │   │   ├── Device.hpp
 │   │   │   │   │   ├── Listener.hpp
@@ -202,7 +210,7 @@ Or if you prefer a textual view:
 │   │   │   │   │   ├── Audio.pdb
 ```
 
-Alternatively, you can just copy the contents of the [src](src/) folder to where you keep your source files (`.c`, or `.cpp` files) for your game project, and the contents of the [inc](inc/) folder to where you keep your header files (`.h` or `.hpp` files), then add all of the `.c` and `.cpp` files directly to your game project. Doing this does not require to generate the `Audio.lib` file and you can skip the next section.
+Alternatively, you can just copy the contents of the [src](src/) folder to where you keep your source files (`.c`, or `.cpp` files) for your game project, and the contents of the [inc](inc/) folder to where you keep your header files (`.h` or `.hpp` files), then add all of the `.c` files directly to your game project. Doing this does not require to generate the `Audio.lib` file and you can skip the next section.
 
 ### C/C++ Settings
 
@@ -242,10 +250,18 @@ You should be able to compile your project with the Audio library. If you have a
 
 ## Playing Sounds
 
-The easiest way to get a sound effect in your game, is to load a sound effect file into an `Audio::Sound` object and use the `Sound::play` or `Sound::replay` (the former will automatically force the sound to play from the beginning in case it is already playing).
+The very easiest way to play a sound effect is "fire and forget". The same sound can overlap itself, but you can't stop it once it has started:
 
 ```cpp
-#include <Audio/Sound.hpp>
+#include <Audio/Audio.hpp>
+...
+Audio::playSound( "explosion.wav" );
+```
+
+For more control, load a sound effect file into an `Audio::Sound` object and use the `Sound::play` or `Sound::replay` (the latter will automatically force the sound to play from the beginning in case it is already playing).
+
+```cpp
+#include <Audio/Audio.hpp>
 ...
 // Create a Sound effect from a wav file:
 Audio::Sound coin { "coin.wav" };
@@ -274,20 +290,45 @@ coin.stop()
 
 > **Note**: Stopping a sound effect does not automatically rewind the sound effect to the beginning of the sound. Use the `Sound::seek` method to seek to the beginning of the sound. You can also use `Sound::replay` to automatically rewind the sound to the beginning.
 
+### Copying Sounds
+
+Copying an `Audio::Sound` does not copy the sound: just like objects in C#, Java, Python or JavaScript, both copies refer to the *same* sound. This means you can pass sounds to functions and store them in other objects without worrying about it:
+
+```cpp
+void playHitSound( Audio::Sound sound )
+{
+    sound.play(); // Keeps playing after this function returns.
+}
+```
+
+The sound is destroyed when the last copy is gone. If you need two independent sounds from the same file (for example, to set a different volume on each), load the file twice. The audio data is shared between them, so this is cheap.
+
+### Checking for Errors
+
+If a sound fails to load, an error is printed to the console and the sound is empty. Using an empty sound is safe (it just doesn't make any noise). You can check if a sound loaded correctly:
+
+```cpp
+Audio::Sound coin { "coin.wav" };
+if ( !coin )
+{
+    // The sound failed to load.
+}
+```
+
 ## Spatial Audio
 
 Sound effects can make use of spatial sound effects. A `Sound` has a position in 3D space relative to a `Listener`. In order to hear the correct spatial sounds, both the `Sound` and `Listener` must be set the correct position.
 
 ```cpp
-#include <Audio/Device.hpp>
+#include <Audio/Audio.hpp>
 ...
 // Create a Sound effect from a wav file:
 Audio::Sound coin { "coin.wav" };
 // Set the position of the sound in the world.
 coin.setPosition( {x, y, z} );
 ...
-// Get a listener from the audio device.
-Audio::Listener listener = Audio::Device::getListener();
+// Get a listener.
+Audio::Listener listener = Audio::getListener();
 ...
 // Position the listener based on the position of the player.
 listener.setPosition( player.getPosition() );
@@ -315,13 +356,13 @@ By default, both sounds and the listener have a position of {0, 0, 0}. In this c
 Short, one-shot sound effects are loaded into memory and decoded on creation. To minimize the impact on loading larger files, it is recommended to stream in the files and decode the audio file "on the fly" while playing. The reduces the time to load the file as well as reduced the amount of memory required to store the audio file.
 
 ```cpp
-#include <Audio/Sound.hpp>
+#include <Audio/Audio.hpp>
 ...
-// Create a Sound effect from a wav file:
-Audio::Sound bgMusic { "Background_Music.mp3", Audio::Sound::Type::Stream };
+// Load background music, streamed while it plays:
+Audio::Sound bgMusic { "Background_Music.mp3", Audio::Sound::Type::Music };
 ```
 
-The only difference between loading background music and one-shot sound effects is the additional `Audio::Sound::Type::Stream` parameter in the constructor. Playing, stopping, and restarting of streamed sounds is the same as one-shot sound effects.
+The only difference between loading background music and one-shot sound effects is the additional `Audio::Sound::Type::Music` parameter in the constructor (`Type::Stream` and `Type::Background` are aliases). Playing, stopping, and restarting of streamed sounds is the same as one-shot sound effects.
 
 ## Playing Waveforms
 
@@ -330,10 +371,41 @@ An `Audio::Waveform` class can be used to play waveform audio. Many early video 
 The `Audio::Waveform` class has two properties that can be modified at runtime to achieve the desired sound effect:
 
 * **Frequency**: The "speed" of the waveform determines the apparent pitch of the sound. This value is measured in Hz.
-* **Amplitude**: The "strength" of the sound and determines how loud it sounds. This value is a floating-point value that is measured in the range from 0 (no sound) to 1 (100% volume). Amplitude is modulated by the master volume of the `Audio::Device`.
+* **Amplitude**: The "strength" of the sound and determines how loud it sounds. This value is a floating-point value that is measured in the range from 0 (no sound) to 1 (100% volume). Amplitude is modulated by the master volume (see `Audio::setMasterVolume`).
+
+A waveform is silent until you call `Waveform::start`.
+
+```cpp
+Audio::Waveform beep { Audio::Waveform::Type::Square, 0.2f, 440.0f };
+beep.start();
+```
 
 See [MarioCoin.cpp](example/MarioCoin.cpp) for an example of how to use a Waveform.
 
-## Known Issues
+## Using the C API
 
-1. The destruction of the audio engine will hang when built as a shared library (DLL). This does not happen when building as a static library. The current workaround is to skip the call to `ma_engine_uninit` when the Audio library is built as a DLL.
+The C API in [audio.h](inc/Audio/audio.h) can be used from C, or from any language that can call C functions. Functions that take an `audio_device*` accept `NULL` to use the default device. See [cExample.c](example/cExample.c) for a complete example.
+
+```c
+#include <Audio/audio.h>
+...
+audio_play_sound( NULL, "coin.wav" );
+
+audio_sound* music = NULL;
+if ( audio_sound_create( NULL, "music.ogg", AUDIO_SOUND_FLAGS_MUSIC, &music ) == AUDIO_SUCCESS )
+{
+    audio_sound_play( music );
+}
+...
+audio_sound_destroy( music );
+audio_shutdown(); // Optional when the program exits normally.
+```
+
+## Upgrading From v1
+
+* The headers have the same names as in v1 (`<Audio/Sound.hpp>`, `<Audio/Device.hpp>`, ...), so existing `#include` lines keep working. You can also include `<Audio/Audio.hpp>` to get everything.
+* `Audio::Device::playSound`, `setMasterVolume` and `getListener` are now free functions: `Audio::playSound`, `Audio::setMasterVolume` and `Audio::getListener`.
+* `Sound::loadSound( path )` and `Sound::loadMusic( path )` are replaced by `Sound::load( path, type )`, which returns an `Audio::Result`.
+* `Sound::setStartTime` and `Sound::setStopTime` now take a delay from *now* (in v1, the value was incorrectly treated as an absolute time).
+* A `Waveform`'s default frequency is now 440 Hz instead of 0 Hz, and `Waveform::setSampleRate` was removed (waveforms always play at the device's sample rate).
+* `Audio::Device` is now only needed if you want to create an audio device with specific settings.

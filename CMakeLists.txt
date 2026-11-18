@@ -1,7 +1,7 @@
 cmake_minimum_required( VERSION 3.22.1 )
 
-set( AUDIO_VERSION_MAJOR 1 )
-set( AUDIO_VERSION_MINOR 1 )
+set( AUDIO_VERSION_MAJOR 2 )
+set( AUDIO_VERSION_MINOR 0 )
 set( AUDIO_VERSION_PATCH 0 )
 set( AUDIO_VERSION "${AUDIO_VERSION_MAJOR}.${AUDIO_VERSION_MINOR}.${AUDIO_VERSION_PATCH}" )
 
@@ -27,55 +27,76 @@ if(MSVC)
 endif(MSVC)
 
 set( INC_FILES
+    # The C API (the library's binary interface).
+    inc/Audio/audio.h
+    # Header-only C++ wrapper. Audio.hpp includes all of the others.
+    inc/Audio/Audio.hpp
     inc/Audio/Config.hpp
     inc/Audio/Device.hpp
     inc/Audio/Listener.hpp
     inc/Audio/Sound.hpp
     inc/Audio/Vector.hpp
-	inc/Audio/Waveform.hpp
+    inc/Audio/Waveform.hpp
 )
 
-set( SRC_FILES
-    src/Device.cpp
-    src/Listener.cpp
-    src/ListenerImpl.hpp
-    src/ListenerImpl.cpp
+# The library itself is written in C99, so that a prebuilt library does not depend
+# on a particular C++ standard library, compiler version, or Debug/Release setting.
+set( AUDIO_SRC_FILES
+    src/audio_internal.h
+    src/audio_device.c
+    src/audio_sound.c
+    src/audio_waveform.c
+)
+
+set( THIRD_PARTY_FILES
     src/miniaudio.c
     src/miniaudio.h
-    src/Sound.cpp
-    src/SoundImpl.hpp
-    src/SoundImpl.cpp
-	src/Waveform.cpp
-	src/WaveformImpl.hpp
-	src/WaveformImpl.cpp
     src/stb_vorbis.c
 )
 
-set( ALL_FILES 
-    ${SRC_FILES} 
-    ${INC_FILES} 
-)
-
-add_library( Audio ${ALL_FILES} .clang-format )
+add_library( Audio ${INC_FILES} ${AUDIO_SRC_FILES} ${THIRD_PARTY_FILES} .clang-format )
 add_library( Audio::Audio ALIAS Audio )
 
 set_target_properties( Audio
     PROPERTIES
-        CXX_STANDARD 17
+        C_STANDARD 99
+        C_STANDARD_REQUIRED ON
+        # Only export the AUDIO_API functions from shared libraries.
+        C_VISIBILITY_PRESET hidden
 )
 
+# The C++ wrapper (Audio.hpp) requires C++17 for std::filesystem.
+target_compile_features( Audio INTERFACE cxx_std_17 )
+
 target_include_directories( Audio
-    PUBLIC 
+    PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-if(BUILD_SHARED_LIBS)
-    target_compile_definitions( Audio
-        PRIVATE Audio_EXPORTS
-        INTERFACE Audio_IMPORTS
-    )
-endif(BUILD_SHARED_LIBS)
+# Warnings for our own code (not for the third-party files).
+set_source_files_properties( ${AUDIO_SRC_FILES}
+    PROPERTIES
+        COMPILE_OPTIONS "$<$<C_COMPILER_ID:MSVC>:/W4>;$<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wall>;$<$<NOT:$<C_COMPILER_ID:MSVC>>:-Wextra>"
+)
+
+if( BUILD_SHARED_LIBS )
+    # CMake defines Audio_EXPORTS when building the shared library.
+    target_compile_definitions( Audio INTERFACE Audio_IMPORTS )
+elseif( MSVC )
+    # Make the static library link with any C runtime the consumer uses (/MD, /MDd,
+    # /MT or /MTd), in both Debug and Release builds:
+    #  - /MT makes calls to CRT functions plain symbol references (e.g. `calloc`
+    #    instead of `__imp_calloc`), which both the static and DLL runtimes provide.
+    #  - /Zl omits the default runtime library name, so the consumer's runtime is used.
+    set_target_properties( Audio PROPERTIES MSVC_RUNTIME_LIBRARY MultiThreaded )
+    target_compile_options( Audio PRIVATE /Zl )
+endif()
+
+if( UNIX )
+    find_package( Threads REQUIRED )
+    target_link_libraries( Audio PUBLIC Threads::Threads m ${CMAKE_DL_LIBS} )
+endif()
 
 if( AUDIO_BUILD_EXAMPLES )
 	add_subdirectory( example )
@@ -109,7 +130,7 @@ install(TARGETS Audio
 # Install headers
 install(DIRECTORY inc/Audio
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hpp"
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 
 # Install export targets

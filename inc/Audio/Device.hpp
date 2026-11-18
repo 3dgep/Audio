@@ -1,77 +1,151 @@
 #pragma once
 
+/// Audio::Device and the functions that use the default device
+/// (Audio::playSound, Audio::setMasterVolume, Audio::getListener).
+
 #include "Config.hpp"
 #include "Listener.hpp"
-#include "Sound.hpp"
-#include "Waveform.hpp"
 
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 
 namespace Audio
 {
-class AUDIO_API Device
+
+/// An explicitly created audio device.
+///
+/// Most programs do not need this: sounds, waveforms and the free functions below use
+/// the default device. Create a `Device` when you need control over its configuration.
+///
+/// `Device` is a shared handle: copies refer to the same device. Sounds and waveforms
+/// keep their device alive, so a `Device` may be destroyed before the sounds created
+/// with it.
+class Device
 {
 public:
-    /// <summary>
-    /// Set the master volume for the audio device. A value of 0 is silent,
-    /// a value of 1 is 100% volume and a value over 1 is amplification.
-    /// </summary>
-    /// <param name="volume">The master volume.</param>
-    static void setMasterVolume( float volume );
+    struct Config
+    {
+        uint32_t listenerCount = 0;  ///< [1 .. 4]. 0 = the maximum (4).
+        uint32_t sampleRate    = 0;  ///< 0 = the playback device's native sample rate.
+        uint32_t channels      = 0;  ///< 0 = the playback device's native channel count.
+    };
 
-    /// <summary>
-    /// Get an audio listener at a particular index.
-    /// </summary>
-    /// <remarks>
-    /// There is a maximum of 4 listeners at index 0 - 3. Requesting an out-of-range listener
-    /// will result in an invalid listener.
-    /// </remarks>
-    /// <param name="listenerIndex">(optional) The listener index to retrieve. Default: 0</param>
-    /// <returns>The listener at the specified index.</returns>
-    static Listener getListener( uint32_t listenerIndex = 0 );
+    /// An empty device. Use `create` to create one.
+    Device() noexcept = default;
 
-    /// <summary>
-    /// Load a sound from a file.
-    /// Use this method for loading small sound effects.
-    /// </summary>
-    /// <param name="filePath">The path to the effect file to load.</param>
-    /// <returns>A valid sound or empty sound if the file is not valid.</returns>
-    static Sound loadSound( const std::filesystem::path& filePath );
+    /// Create a device. Check the result with `operator bool` or `create`'s return value.
+    explicit Device( const Config& config )
+    {
+        create( config );
+    }
 
-    /// <summary>
-    /// Load music from a file.
-    /// This is intended to be used to load larger, streaming sounds like background music.
-    /// </summary>
-    /// <param name="filePath">The path to the music file to load.</param>
-    /// <returns>A valid sound or empty sound if the file is not valid.</returns>
-    static Sound loadMusic( const std::filesystem::path& filePath );
+    /// Create (or re-create) this device.
+    Result create( const Config& config = {} )
+    {
+        reset();
 
-    /// <summary>
-    /// Play a sound effect in a "fire and forget" way.
-    /// This allows you to play a one-shot sound effect without having to create a sound instance.
-    /// This might be useful for playing the same sound effect multiple times and allowing the effect to
-    /// overlap each other.
-    /// Note: There is no way to stop or control the position of the playing sound.
-    /// </summary>
-    /// <param name="filePath">The path to the sound effect to play.</param>
-    static void playSound( const std::filesystem::path& filePath );
+        audio_device_config c = audio_device_config_init();
+        c.listener_count      = config.listenerCount;
+        c.sample_rate         = config.sampleRate;
+        c.channels            = config.channels;
 
-    /// <summary>
-    /// Create a waveform.
-    /// </summary>
-    /// <param name="type">The function to use for the waveform.</param>
-    /// <param name="amplitude">The amplitude of the waveform.</param>
-    /// <param name="frequency">The frequency of the waveform.</param>
-    /// <returns>The waveform.</returns>
-    static Waveform createWaveform( Waveform::Type type, float amplitude, float frequency );
+        audio_device*      device = nullptr;
+        const audio_result result = audio_device_create( &c, &device );
+        impl                      = detail::adopt( device, &audio_device_destroy );
+        return detail::toResult( result );
+    }
 
-    // Singleton class.
-    Device()                           = delete;
-    ~Device()                          = delete;
-    Device( const Device& )            = delete;
-    Device( Device&& )                 = delete;
-    Device& operator=( const Device& ) = delete;
-    Device& operator=( Device&& )      = delete;
+    /// Release this handle. The device is destroyed when the last copy of this handle
+    /// and the last sound created with it are gone.
+    void reset() noexcept
+    {
+        impl.reset();
+    }
+
+    explicit operator bool() const noexcept
+    {
+        return impl != nullptr;
+    }
+
+    /// Play a sound in a "fire and forget" way.
+    Result playSound( const std::filesystem::path& filePath ) const
+    {
+        if ( !get() )
+            return Result::InvalidOperation;
+        return detail::toResult( audio_play_sound( get(), detail::toUtf8( filePath ).c_str() ) );
+    }
+
+    void setMasterVolume( float volume ) const noexcept
+    {
+        if ( get() )
+            audio_device_set_master_volume( get(), volume );
+    }
+
+    float getMasterVolume() const noexcept
+    {
+        return get() ? audio_device_get_master_volume( get() ) : 0.0f;
+    }
+
+    uint32_t getSampleRate() const noexcept
+    {
+        return get() ? audio_device_get_sample_rate( get() ) : 0u;
+    }
+
+    uint32_t getChannels() const noexcept
+    {
+        return get() ? audio_device_get_channels( get() ) : 0u;
+    }
+
+    uint32_t getListenerCount() const noexcept
+    {
+        return get() ? audio_device_get_listener_count( get() ) : 0u;
+    }
+
+    /// Get a listener. Returns an invalid listener if the device is empty or the
+    /// index is out of range.
+    Listener getListener( uint32_t index = 0 ) const noexcept
+    {
+        return impl ? Listener { impl, index } : Listener {};
+    }
+
+    /// The underlying C handle.
+    audio_device* get() const noexcept
+    {
+        return impl.get();
+    }
+
+private:
+    std::shared_ptr<audio_device> impl;
 };
+
+// ----------------------------------------------------------------------------
+// Default device
+// ----------------------------------------------------------------------------
+
+/// Play a sound in a "fire and forget" way on the default device.
+/// Multiple calls may overlap. There is no way to stop the sound once started.
+inline Result playSound( const std::filesystem::path& filePath )
+{
+    return detail::toResult( audio_play_sound( detail::useDevice( nullptr ), detail::toUtf8( filePath ).c_str() ) );
+}
+
+/// Set the master volume of the default device. 0 is silent, 1 is 100%, above 1 amplifies.
+inline void setMasterVolume( float volume ) noexcept
+{
+    audio_device_set_master_volume( detail::useDevice( nullptr ), volume );
+}
+
+inline float getMasterVolume() noexcept
+{
+    return audio_device_get_master_volume( detail::useDevice( nullptr ) );
+}
+
+/// Get a listener of the default device [0 .. 3].
+inline Listener getListener( uint32_t index = 0 ) noexcept
+{
+    detail::useDevice( nullptr );
+    return Listener { nullptr, index };
+}
+
 }  // namespace Audio

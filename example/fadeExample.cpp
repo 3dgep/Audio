@@ -12,7 +12,7 @@
 // hear is volume x gain. The base volume below is deliberately less than 1.0,
 // so a gain of 1.0 is comfortable rather than full scale.
 
-#include <Audio/Sound.hpp>
+#include <Audio/Audio.hpp>
 
 #include <chrono>
 #include <cstring>

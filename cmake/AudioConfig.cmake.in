@@ -2,8 +2,9 @@
 
 include(CMakeFindDependencyMacro)
 
-# Add any dependencies here if needed
-# find_dependency(SomePackage)
+if(UNIX)
+    find_dependency(Threads)
+endif()
 
 # Include the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/AudioTargets.cmake")

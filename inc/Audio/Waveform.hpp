@@ -1,148 +1,139 @@
 #pragma once
 
-#include "Config.hpp"
+/// Audio::Waveform: a generated sine, square, triangle or sawtooth wave.
 
-#include <cstddef>
+#include "Config.hpp"
+#include "Device.hpp"
+
 #include <cstdint>
 #include <memory>
 
 namespace Audio
 {
-class WaveformImpl;
 
-class AUDIO_API Waveform
+/// A generated waveform (sine, square, triangle or sawtooth).
+///
+/// `Waveform` is a shared handle: copies refer to the same waveform, which is destroyed
+/// when the last copy is gone. All functions are safe to call on an empty waveform.
+class Waveform
 {
 public:
-    /// <summary>
-    /// Waveform function.
-    /// </summary>
-    enum class Type
+    enum class Type : int32_t
     {
-        Sine,      ///< Sine wave function. See: https://en.wikipedia.org/wiki/Sine_wave
-        Square,    ///< Square wave function. See: https://en.wikipedia.org/wiki/Square_wave
-        Triangle,  ///< Triangle wave function. See: https://en.wikipedia.org/wiki/Triangle_wave
-        Sawtooth   ///< Sawtooth wave function. See: https://en.wikipedia.org/wiki/Sawtooth_wave
+        Sine     = AUDIO_WAVEFORM_TYPE_SINE,      ///< See: https://en.wikipedia.org/wiki/Sine_wave
+        Square   = AUDIO_WAVEFORM_TYPE_SQUARE,    ///< See: https://en.wikipedia.org/wiki/Square_wave
+        Triangle = AUDIO_WAVEFORM_TYPE_TRIANGLE,  ///< See: https://en.wikipedia.org/wiki/Triangle_wave
+        Sawtooth = AUDIO_WAVEFORM_TYPE_SAWTOOTH,  ///< See: https://en.wikipedia.org/wiki/Sawtooth_wave
     };
 
-    /// <summary>
-    /// Construct a waveform.
-    /// </summary>
-    /// <param name="type">The function type for the waveform.</param>
-    /// <param name="amplitude">The amplitude of the waveform.</param>
-    /// <param name="frequency">The frequency (in Hz) of the waveform.</param>
-    Waveform( Type type, float amplitude = 1.0f, float frequency = 0.0f );
+    /// An empty waveform.
+    Waveform() noexcept = default;
 
-    /// <summary>
-    /// Construct a new waveform (replacing the current waveform if one was previously created for this object.
-    /// </summary>
-    /// <param name="type">The function type for the waveform.</param>
-    /// <param name="amplitude">The amplitude of the waveform.</param>
-    /// <param name="frequency">The frequency (in Hz) of the waveform.</param>
-    void create( Type type, float amplitude = 1.0f, float frequency = 0.0f );
+    /// Create a waveform on the default device. The waveform starts stopped.
+    explicit Waveform( Type type, float amplitude = 1.0f, float frequency = 440.0f )
+    {
+        create( type, amplitude, frequency );
+    }
 
-    /// <summary>
-    /// Set the function type for the waveform.
-    /// </summary>
-    /// <param name="type">The type of the waveform.</param>
-    void setType( Type type );
+    /// Create a waveform on a specific device. The waveform starts stopped.
+    Waveform( const Device& device, Type type, float amplitude = 1.0f, float frequency = 440.0f )
+    {
+        create( device, type, amplitude, frequency );
+    }
 
-    /// <summary>
-    /// Get the function type for this waveform.
-    /// </summary>
-    /// <returns>The waveform type.</returns>
-    Type getType() const noexcept;
+    /// Create (or replace) this waveform on the default device.
+    Result create( Type type, float amplitude = 1.0f, float frequency = 440.0f )
+    {
+        return createOn( detail::useDevice( nullptr ), type, amplitude, frequency );
+    }
 
-    /// <summary>
-    /// Set the amplitude of the waveform.
-    /// </summary>
-    /// <param name="amplitude">The waveform amplitude.</param>
-    void setAmplitude( float amplitude );
+    /// Create (or replace) this waveform on a specific device.
+    Result create( const Device& device, Type type, float amplitude = 1.0f, float frequency = 440.0f )
+    {
+        if ( !device )
+        {
+            reset();
+            return Result::InvalidArgs;
+        }
+        return createOn( device.get(), type, amplitude, frequency );
+    }
 
-    /// <summary>
-    /// Get the amplitude of this waveform.
-    /// </summary>
-    /// <returns>The amplitude of this waveform.</returns>
-    float getAmplitude() const noexcept;
+    /// Release this handle, leaving this object empty. The waveform itself is
+    /// destroyed when the last copy is released.
+    void reset() noexcept
+    {
+        impl.reset();
+    }
 
-    /// <summary>
-    /// Set the frequency (in Hz) of the waveform.
-    /// </summary>
-    /// <param name="frequency">The frequency (in Hz) of the waveform.</param>
-    void setFrequency( float frequency );
+    explicit operator bool() const noexcept
+    {
+        return impl != nullptr;
+    }
 
-    /// <summary>
-    /// Get the frequency of the waveform.
-    /// </summary>
-    /// <returns>The frequency (in Hz) of this waveform.</returns>
-    float getFrequency() const noexcept;
+    Result start() noexcept
+    {
+        return detail::toResult( audio_waveform_start( get() ) );
+    }
 
-    /// <summary>
-    /// Set the sample rate (samples/second) for the waveform.
-    /// </summary>
-    /// <param name="sampleRate">The waveform sample rate.</param>
-    void setSampleRate( uint32_t sampleRate );
+    Result stop() noexcept
+    {
+        return detail::toResult( audio_waveform_stop( get() ) );
+    }
 
-    /// <summary>
-    /// Get the sample rate for the waveform.
-    /// </summary>
-    /// <returns>The sample rate (samples/second) of this waveform.</returns>
-    uint32_t getSampleRate() const noexcept;
+    bool isPlaying() const noexcept
+    {
+        return audio_waveform_is_playing( get() ) != AUDIO_FALSE;
+    }
 
-    /// <summary>
-    /// Start playing the waveform.
-    /// </summary>
-    void start();
+    void setType( Type type ) noexcept
+    {
+        audio_waveform_set_type( get(), static_cast<audio_waveform_type>( type ) );
+    }
 
-    /// <summary>
-    /// Stop playing the waveform.
-    /// </summary>
-    void stop();
+    Type getType() const noexcept
+    {
+        return static_cast<Type>( audio_waveform_get_type( get() ) );
+    }
 
-    Waveform();
-    ~Waveform();
-    Waveform( const Waveform& );
-    Waveform( Waveform&& ) noexcept;
-    Waveform& operator=( const Waveform& );
-    Waveform& operator=( Waveform&& ) noexcept;
+    void setAmplitude( float amplitude ) noexcept
+    {
+        audio_waveform_set_amplitude( get(), amplitude );
+    }
 
-    /// <summary>
-    /// Allow nullptr assignment.
-    /// </summary>
-    /// <remarks>
-    /// Assigning `nullptr` will release the underlying implementation.
-    /// This is the same as using the `reset` function on this object.
-    /// </remarks>
-    Waveform& operator=( std::nullptr_t ) noexcept;
+    float getAmplitude() const noexcept
+    {
+        return audio_waveform_get_amplitude( get() );
+    }
 
-    /// <summary>
-    /// Allow for null checks.
-    /// </summary>
-    bool operator==( std::nullptr_t ) const noexcept;
-    bool operator!=( std::nullptr_t ) const noexcept;
+    /// Frequency in Hz.
+    void setFrequency( float frequency ) noexcept
+    {
+        audio_waveform_set_frequency( get(), frequency );
+    }
 
-    /// <summary>
-    /// Explicit bool conversion allows to check for a valid object.
-    /// </summary>
-    /// <returns>`true` if this object contains a valid pointer to implementation. `false` otherwise.</returns>
-    explicit operator bool() const noexcept;
+    float getFrequency() const noexcept
+    {
+        return audio_waveform_get_frequency( get() );
+    }
 
-    /// <summary>
-    /// Get a pointer to the implementation.
-    /// </summary>
-    /// <returns>A pointer to the Waveform implementation.</returns>
-    std::shared_ptr<WaveformImpl> get() const noexcept;
-
-    /// <summary>
-    /// Reset the underlying pointer object.
-    /// If this is the last reference, the object is destroyed.
-    /// </summary>
-    void reset();
-
-protected:
-    explicit Waveform( std::shared_ptr<WaveformImpl> impl );
+    /// The underlying C handle.
+    audio_waveform* get() const noexcept
+    {
+        return impl.get();
+    }
 
 private:
-    std::shared_ptr<WaveformImpl> impl;
+    Result createOn( audio_device* device, Type type, float amplitude, float frequency )
+    {
+        reset();
+
+        audio_waveform*    waveform = nullptr;
+        const audio_result result   = audio_waveform_create( device, static_cast<audio_waveform_type>( type ), amplitude, frequency, &waveform );
+        impl                        = detail::adopt( waveform, &audio_waveform_destroy );
+        return detail::toResult( result );
+    }
+
+    std::shared_ptr<audio_waveform> impl;
 };
 
 }  // namespace Audio

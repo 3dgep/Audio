@@ -25,3 +25,15 @@ set_target_properties( fadeExample
     PROPERTIES
         DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_executable( cExample cExample.c )
+
+target_link_libraries( cExample
+    PRIVATE Audio
+)
+
+set_target_properties( cExample
+    PROPERTIES
+        C_STANDARD 99
+        DEBUGGER_WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)

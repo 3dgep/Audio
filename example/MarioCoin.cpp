@@ -1,6 +1,6 @@
 #include "MarioCoin.hpp"
 
-#include <Audio/Waveform.hpp>
+#include <Audio/Audio.hpp>
 
 #include <span>
 

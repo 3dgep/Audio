@@ -28,7 +28,7 @@
     <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -53,10 +53,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>inc</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <!-- Link with any C runtime (/MD, /MDd, /MT, /MTd). See CMakeLists.txt. -->
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <OmitDefaultLibName>true</OmitDefaultLibName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -69,10 +72,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>inc</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <!-- Link with any C runtime (/MD, /MDd, /MT, /MTd). See CMakeLists.txt. -->
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <OmitDefaultLibName>true</OmitDefaultLibName>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -82,29 +88,31 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Audio\audio.h" />
+    <ClInclude Include="inc\Audio\Audio.hpp" />
     <ClInclude Include="inc\Audio\Config.hpp" />
     <ClInclude Include="inc\Audio\Device.hpp" />
     <ClInclude Include="inc\Audio\Listener.hpp" />
     <ClInclude Include="inc\Audio\Sound.hpp" />
     <ClInclude Include="inc\Audio\Vector.hpp" />
     <ClInclude Include="inc\Audio\Waveform.hpp" />
-    <ClInclude Include="src\ListenerImpl.hpp" />
+    <ClInclude Include="src\audio_internal.h" />
     <ClInclude Include="src\miniaudio.h" />
-    <ClInclude Include="src\SoundImpl.hpp" />
-    <ClInclude Include="src\WaveformImpl.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Device.cpp" />
-    <ClCompile Include="src\Listener.cpp" />
-    <ClCompile Include="src\ListenerImpl.cpp" />
+    <ClCompile Include="src\audio_device.c">
+      <WarningLevel>Level4</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="src\audio_sound.c">
+      <WarningLevel>Level4</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="src\audio_waveform.c">
+      <WarningLevel>Level4</WarningLevel>
+    </ClCompile>
     <ClCompile Include="src\miniaudio.c" />
-    <ClCompile Include="src\Sound.cpp" />
-    <ClCompile Include="src\SoundImpl.cpp" />
     <ClCompile Include="src\stb_vorbis.c" />
-    <ClCompile Include="src\Waveform.cpp" />
-    <ClCompile Include="src\WaveformImpl.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>
+</Project>

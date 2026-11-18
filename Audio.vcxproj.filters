@@ -9,12 +9,20 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    <Filter Include="Third Party">
+      <UniqueIdentifier>{2B6F2D7E-6C1A-4E0B-9C4D-8F3A5E7B1D20}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="inc\Audio\audio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Audio\Audio.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="inc\Audio\Config.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="inc\Audio\Device.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -27,52 +35,31 @@
     <ClInclude Include="inc\Audio\Vector.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ListenerImpl.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\miniaudio.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\SoundImpl.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="inc\Audio\Waveform.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\WaveformImpl.hpp">
+    <ClInclude Include="src\audio_internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="inc\Audio\Config.hpp">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\miniaudio.h">
+      <Filter>Third Party</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Device.cpp">
+    <ClCompile Include="src\audio_device.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Listener.cpp">
+    <ClCompile Include="src\audio_sound.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ListenerImpl.cpp">
+    <ClCompile Include="src\audio_waveform.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\miniaudio.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Sound.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\SoundImpl.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Third Party</Filter>
     </ClCompile>
     <ClCompile Include="src\stb_vorbis.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Waveform.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\WaveformImpl.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Third Party</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -1,7 +1,6 @@
 #include "MarioCoin.hpp"
 
-#include <Audio/Sound.hpp>
-#include <Audio/Waveform.hpp>
+#include <Audio/Audio.hpp>
 
 #include <chrono>
 #include <cmath>

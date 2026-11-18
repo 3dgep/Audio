@@ -1,463 +1,390 @@
 #pragma once
 
+/// Audio::Sound: a sound effect or music loaded from a file.
+
 #include "Config.hpp"
+#include "Device.hpp"
 #include "Listener.hpp"
 #include "Vector.hpp"
 
-#include <cstddef>
-#include <cstdint>
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 
 namespace Audio
 {
-class SoundImpl;
 
-class AUDIO_API Sound
+/// A sound loaded from a file (WAV, MP3, FLAC or OGG Vorbis).
+///
+/// `Sound` is a shared handle, so it can be passed around by value without thinking
+/// about it: copies refer to the *same* sound (same playback position, volume, 3D
+/// position, ...), and the sound is destroyed when the last copy is gone.
+///
+/// For an independent sound, load the same file again: decoded audio data is shared
+/// between sounds loaded from the same file, so this is cheap. For overlapping one-shot
+/// effects, use `Audio::playSound`.
+///
+/// All functions are safe to call on an empty sound (they do nothing), so a sound that
+/// failed to load is silent rather than a crash.
+class Sound
 {
 public:
     enum class Type
     {
-        Sound,               ///< A short sound effect.
-        Music,               ///< A longer sound like background music.
+        Sound,               ///< A short sound effect, fully decoded on load.
+        Music,               ///< A longer sound like background music, streamed while playing.
         Background = Music,  ///< An alias for Music.
         Stream     = Music,  ///< An alias for Music.
     };
 
     /// Note: `Off` is deliberately not named `None`, since X11's `X.h` defines
-    /// `None` as a macro, which the preprocessor would substitute here.
-    enum class AttenuationModel
+    /// `None` as a macro.
+    enum class AttenuationModel : int32_t
     {
-        Off,          ///< No distance attenuation and no spatialization.
-        Inverse,      ///< Equivalent to OpenAL's AL_INVERSE_DISTANCE_CLAMPED.
-        Linear,       ///< Linear attenuation. Equivalent to OpenAL's AL_LINEAR_DISTANCE_CLAMPED.
-        Exponential,  ///< Exponential attenuation. Equivalent to OpenAL's AL_EXPONENT_DISTANCE_CLAMPED.
+        Off         = AUDIO_ATTENUATION_MODEL_NONE,         ///< No distance attenuation.
+        Inverse     = AUDIO_ATTENUATION_MODEL_INVERSE,      ///< Like OpenAL's AL_INVERSE_DISTANCE_CLAMPED. (default)
+        Linear      = AUDIO_ATTENUATION_MODEL_LINEAR,       ///< Like OpenAL's AL_LINEAR_DISTANCE_CLAMPED.
+        Exponential = AUDIO_ATTENUATION_MODEL_EXPONENTIAL,  ///< Like OpenAL's AL_EXPONENT_DISTANCE_CLAMPED.
     };
 
-    explicit Sound( const std::filesystem::path& filePath, Type type = Type::Sound );
+    /// An empty sound.
+    Sound() noexcept = default;
 
-    /// <summary>
-    /// Load a sound effect from a file.
-    /// Use this to load short sounds like sound effects.
-    /// </summary>
-    /// <param name="filePath">The path to the sound file.</param>
-    void loadSound( const std::filesystem::path& filePath );
+    /// Load a sound on the default device.
+    explicit Sound( const std::filesystem::path& filePath, Type type = Type::Sound )
+    {
+        load( filePath, type );
+    }
 
-    /// <summary>
-    /// Load a music file.
-    /// Use this to load longer sounds like background music.
-    /// </summary>
-    /// <param name="filePath">The path to the music file.</param>
-    void loadMusic( const std::filesystem::path& filePath );
+    /// Load a sound on a specific device.
+    Sound( const Device& device, const std::filesystem::path& filePath, Type type = Type::Sound )
+    {
+        load( device, filePath, type );
+    }
 
-    /// <summary>
-    /// Start playing the sound.
-    /// </summary>
-    void play();
+    /// Load (or replace) this sound on the default device.
+    Result load( const std::filesystem::path& filePath, Type type = Type::Sound )
+    {
+        return create( detail::useDevice( nullptr ), filePath, type );
+    }
 
-    /// <summary>
-    /// Stop the playing sound.
-    /// Note: Non-looping sounds will stop automatically.
-    /// </summary>
-    void stop();
+    /// Load (or replace) this sound on a specific device.
+    Result load( const Device& device, const std::filesystem::path& filePath, Type type = Type::Sound )
+    {
+        if ( !device )
+        {
+            reset();
+            return Result::InvalidArgs;
+        }
+        return create( device.get(), filePath, type );
+    }
 
-    /// <summary>
-    /// Pause the playing sound.
-    /// Note: This is the same as Sound::stop().
-    /// </summary>
-    void pause();
+    /// Release this handle, leaving this object empty. The sound itself is destroyed
+    /// when the last copy is released.
+    void reset() noexcept
+    {
+        impl.reset();
+    }
 
-    /// <summary>
-    /// Get the duration of the sound in seconds.
-    /// </summary>
-    /// <returns>The duration of the sound (in seconds).</returns>
-    float getDurationInSeconds() const;
+    /// `true` if a sound is loaded.
+    explicit operator bool() const noexcept
+    {
+        return impl != nullptr;
+    }
 
-    /// <summary>
-    /// Get the current cursor position of the sound in seconds.
-    /// </summary>
-    /// <returns>The current cursor position of the sound (in seconds).</returns>
-    float getCursorInSeconds() const;
+    /// Start playing (or resume) the sound.
+    Result play() noexcept
+    {
+        return detail::toResult( audio_sound_play( get() ) );
+    }
 
-    /// <summary>
-    /// Seek to a specific position in the sound.
-    /// Note: `duration` must be less than the duration of the sound.
-    /// </summary>
-    /// <typeparam name="Rep">The representation of the duration.</typeparam>
-    /// <typeparam name="Period">The period of the duration.</typeparam>
-    /// <param name="duration">The duration to seek to.</param>
-    template<typename Rep, typename Period = std::ratio<1>>
-    void seek( const std::chrono::duration<Rep, Period>& duration );
+    /// Stop the sound. Calling `play` again resumes from the same position.
+    Result stop() noexcept
+    {
+        return detail::toResult( audio_sound_stop( get() ) );
+    }
 
-    /// <summary>
-    /// Seek to a specific position (in milliseconds) in the sound.
-    /// </summary>
-    /// <param name="milliseconds">(optional) The milliseconds to seek to. Default: 0</param>
-    void seek( uint64_t milliseconds = 0ull );
+    /// The same as `stop`.
+    Result pause() noexcept
+    {
+        return stop();
+    }
 
-    /// <summary>
-    /// Restart the playing sound from the beginning.
-    /// This is useful if the sound is already playing, but you want to play it again from the beginning.
-    /// If you only want to seek to the beginning without playing the sound, use `seek(0)`.
-    /// </summary>
-    void replay();
+    /// Play the sound again from the beginning.
+    Result replay() noexcept
+    {
+        seek( 0u );
+        return play();
+    }
 
-    /// <summary>
-    /// Check if the sound is currently playing.
-    /// </summary>
-    /// <returns>`true` if the sound is playing, false otherwise.</returns>
-    bool isPlaying() const;
+    /// Seek to a position (in milliseconds).
+    Result seek( uint64_t milliseconds = 0u ) noexcept
+    {
+        return detail::toResult( audio_sound_seek( get(), milliseconds ) );
+    }
 
-    /// <summary>
-    /// Check if the sound is finished playing.
-    /// Note: Looping sounds will always return false.
-    /// </summary>
-    /// <returns>`true` if the sound is finished playing, `false` otherwise.</returns>
-    bool isEnd() const;
+    /// Seek to a position, for example `sound.seek( 1.5s )`.
+    template<class Rep, class Period>
+    Result seek( const std::chrono::duration<Rep, Period>& position ) noexcept
+    {
+        return seek( detail::toMilliseconds( position ) );
+    }
 
-    /// <summary>
-    /// Loop the sound.
-    /// </summary>
-    /// <param name="looping">`true` to make the sound loop, `false` to disable looping.</param>
-    void setLooping( bool looping );
+    float getDurationInSeconds() const noexcept
+    {
+        return audio_sound_get_duration_seconds( get() );
+    }
 
-    /// <summary>
-    /// Check if the sound is looping.
-    /// </summary>
-    /// <returns>`true` if the sound is looping, `false` otherwise.</returns>
-    bool isLooping() const;
+    float getCursorInSeconds() const noexcept
+    {
+        return audio_sound_get_cursor_seconds( get() );
+    }
 
-    /// <summary>
-    /// By default, sounds will be spatialized based on the closest listener.
-    /// Sounds can be pinned to a specific listener using this function.
-    /// </summary>
-    /// <param name="listener">The listener to pin this sound to.</param>
-    void setPinnedListener( const Listener& listener );
+    bool isPlaying() const noexcept
+    {
+        return audio_sound_is_playing( get() ) != AUDIO_FALSE;
+    }
 
-    /// <summary>
-    /// Set the volume of this sound.
-    /// </summary>
-    /// <param name="volume">The volume to set this sound to (in the range [0 .. 1])</param>
-    void setVolume( float volume );
+    /// `true` once a non-looping sound has finished. Looping sounds never end.
+    bool isEnd() const noexcept
+    {
+        return audio_sound_is_at_end( get() ) != AUDIO_FALSE;
+    }
 
-    /// <summary>
-    /// Get the volume of this sound.
-    /// </summary>
-    /// <returns>The current volume of this sound.</returns>
-    float getVolume() const;
+    void setLooping( bool looping ) noexcept
+    {
+        audio_sound_set_looping( get(), looping ? AUDIO_TRUE : AUDIO_FALSE );
+    }
 
-    /// <summary>
-    /// Set the pan of this sound.
-    /// A value of 0 disables panning.
-    /// A value of -1 pans the sound to the left.
-    /// A value of 1 pans the sound to the right.
-    /// </summary>
-    /// <param name="pan">The pan value for the sound.</param>
-    void setPan( float pan );
+    bool isLooping() const noexcept
+    {
+        return audio_sound_is_looping( get() ) != AUDIO_FALSE;
+    }
 
-    /// <summary>
-    /// Get the current pan of this sound.
-    /// </summary>
-    /// <returns>The current pan of this sound.</returns>
-    float getPan() const;
+    /// 0 is silent, 1 is 100%, above 1 amplifies.
+    void setVolume( float volume ) noexcept
+    {
+        audio_sound_set_volume( get(), volume );
+    }
 
-    /// <summary>
-    /// Set the pitch of this sound.
-    /// The pitch must be greater than 1.
-    /// A larger value will result in a higher pitch.
-    /// </summary>
-    /// <param name="pitch">The pitch to set this sound to.</param>
-    void setPitch( float pitch );
+    float getVolume() const noexcept
+    {
+        return audio_sound_get_volume( get() );
+    }
 
-    /// <summary>
-    /// Get the current pitch of this sound.
-    /// </summary>
-    /// <returns>The current pitch of this sound.</returns>
-    float getPitch() const;
+    /// -1 is fully left, 0 is centered, 1 is fully right.
+    void setPan( float pan ) noexcept
+    {
+        audio_sound_set_pan( get(), pan );
+    }
 
-    /// <summary>
-    /// Set the position of this spatialized sounds.
-    /// </summary>
-    /// <param name="position">The position to set this sound to.</param>
-    void setPosition( const Vector& position );
+    float getPan() const noexcept
+    {
+        return audio_sound_get_pan( get() );
+    }
 
-    /// <summary>
-    /// Get the position of this sound.
-    /// </summary>
-    /// <returns>The position of this sound in world space.</returns>
-    Vector getPosition() const;
+    /// Must be greater than 0. 1 is the original pitch; larger is higher.
+    void setPitch( float pitch ) noexcept
+    {
+        audio_sound_set_pitch( get(), pitch );
+    }
 
-    /// <summary>
-    /// Set the forward direction of this spatialized sounds.
-    /// </summary>
-    /// <param name="direction">The forward direction of this sound.</param>
-    void setDirection( const Vector& direction );
+    float getPitch() const noexcept
+    {
+        return audio_sound_get_pitch( get() );
+    }
 
-    /// <summary>
-    /// Get the forward direction of this spatialized sound.
-    /// </summary>
-    /// <returns>The forward direction of this sound.</returns>
-    Vector getDirection() const;
+    /// Fade from the current volume to `endVolume` over a number of milliseconds.
+    void setFade( float endVolume, uint64_t milliseconds ) noexcept
+    {
+        audio_sound_set_fade( get(), -1.0f, endVolume, milliseconds );
+    }
 
-    /// <summary>
-    /// Set the velocity of this spatialized sound.
-    /// </summary>
-    /// <param name="velocity">The velocity of this sound.</param>
-    void setVelocity( const Vector& velocity );
+    /// Fade from `beginVolume` to `endVolume` over a number of milliseconds.
+    void setFade( float beginVolume, float endVolume, uint64_t milliseconds ) noexcept
+    {
+        audio_sound_set_fade( get(), beginVolume, endVolume, milliseconds );
+    }
 
-    /// <summary>
-    /// Get the velocity of this spatialized sound.
-    /// </summary>
-    /// <returns>The velocity of this sound.</returns>
-    Vector getVelocity() const;
+    /// Fade from the current volume to `endVolume`, for example `sound.setFade( 0.0f, 2s )`.
+    template<class Rep, class Period>
+    void setFade( float endVolume, const std::chrono::duration<Rep, Period>& duration ) noexcept
+    {
+        setFade( endVolume, detail::toMilliseconds( duration ) );
+    }
 
-    /// <summary>
-    /// Set the cone used to control attenuation of this sound.
-    /// </summary>
-    /// <param name="innerAngle">The inner cone angle (in radians).</param>
-    /// <param name="outerAngle">The outer cone angle (in radians).</param>
-    /// <param name="outerGain">The gain to use when the listener is outside the `outerAngle`.</param>
-    void setCone( float innerAngle, float outerAngle, float outerGain );
+    /// Fade from `beginVolume` to `endVolume` over a duration.
+    template<class Rep, class Period>
+    void setFade( float beginVolume, float endVolume, const std::chrono::duration<Rep, Period>& duration ) noexcept
+    {
+        setFade( beginVolume, endVolume, detail::toMilliseconds( duration ) );
+    }
 
-    /// <summary>
-    /// Get the cone used to control attenuation of this sound.
-    /// </summary>
-    /// <param name="innerAngle">A reference to the inner cone angle (in radians).</param>
-    /// <param name="outerAngle">A reference to the outer cone angle (in radians).</param>
-    /// <param name="outerGain">A reference to the gain when the listener is outside the `outerAngle`.</param>
-    void getCone( float& innerAngle, float& outerAngle, float& outerGain ) const;
+    /// Start the sound after a delay (in milliseconds from now). `play` must still be called.
+    void setStartTime( uint64_t delayMilliseconds ) noexcept
+    {
+        audio_sound_schedule_start( get(), delayMilliseconds );
+    }
 
-    /// <summary>
-    /// Set the attenuation model for this sound.
-    /// </summary>
-    /// <param name="attenuation">The attenuation model to use for this sound.</param>
-    void setAttenuationModel( AttenuationModel attenuation );
+    template<class Rep, class Period>
+    void setStartTime( const std::chrono::duration<Rep, Period>& delay ) noexcept
+    {
+        setStartTime( detail::toMilliseconds( delay ) );
+    }
 
-    /// <summary>
-    /// Get the attenuation model for this sound.
-    /// </summary>
-    /// <returns>The attenuation model for this sound.</returns>
-    AttenuationModel getAttenuationModel() const;
+    /// Stop the sound after a delay (in milliseconds from now).
+    void setStopTime( uint64_t delayMilliseconds ) noexcept
+    {
+        audio_sound_schedule_stop( get(), delayMilliseconds );
+    }
 
-    /// <summary>
-    /// Set the roll off factor for this sound.
-    /// Roll off controls how quickly the sound attenuates as it moves away from the listener.
-    /// </summary>
-    /// <param name="rollOff">The roll off factor for this sound.</param>
-    void setRollOff( float rollOff );
+    template<class Rep, class Period>
+    void setStopTime( const std::chrono::duration<Rep, Period>& delay ) noexcept
+    {
+        setStopTime( detail::toMilliseconds( delay ) );
+    }
 
-    /// <summary>
-    /// Get the roll off factor for this sound.
-    /// </summary>
-    /// <returns>The roll off factor for this sound.</returns>
-    float getRollOff() const;
+    // --- Spatialization (ignored for Type::Music) ---
 
-    /// <summary>
-    /// The minimum gain to apply for spatialization for this sound.
-    /// </summary>
-    /// <param name="minGain">The minimum gain factor.</param>
-    void setMinGain( float minGain );
+    /// By default, sounds are spatialized relative to the closest listener.
+    /// Use this to pin the sound to a specific listener instead.
+    void setPinnedListener( const Listener& listener ) noexcept
+    {
+        audio_sound_set_pinned_listener( get(), listener ? listener.getIndex() : AUDIO_LISTENER_CLOSEST );
+    }
 
-    /// <summary>
-    /// Get the minimum gain to apply for spatialization for this sound.
-    /// </summary>
-    /// <returns>The minimum gain factor for this sound.</returns>
-    float getMinGain() const;
+    void setPosition( const Vector& position ) noexcept
+    {
+        audio_sound_set_position( get(), detail::toC( position ) );
+    }
 
-    /// <summary>
-    /// Set the maximum gain to apply for spatialization for this sound.
-    /// </summary>
-    /// <param name="maxGain">The maximum gain factor.</param>
-    void setMaxGain( float maxGain );
+    Vector getPosition() const noexcept
+    {
+        return detail::fromC( audio_sound_get_position( get() ) );
+    }
 
-    /// <summary>
-    /// Get the maximum gain to apply for spatialization for this sound.
-    /// </summary>
-    /// <returns>The maximum gain factor for this sound.</returns>
-    float getMaxGain() const;
+    void setDirection( const Vector& direction ) noexcept
+    {
+        audio_sound_set_direction( get(), detail::toC( direction ) );
+    }
 
-    /// <summary>
-    /// Set the minimum distance for attenuation of this sound.
-    /// </summary>
-    /// <param name="minDistance">The minimum attenuation distance.</param>
-    void setMinDistance( float minDistance );
+    Vector getDirection() const noexcept
+    {
+        return detail::fromC( audio_sound_get_direction( get() ) );
+    }
 
-    /// <summary>
-    /// Get the minimum distance for attenuation of this sound.
-    /// </summary>
-    /// <returns>The minimum attenuation distance of this sound.</returns>
-    float getMinDistance() const;
+    void setVelocity( const Vector& velocity ) noexcept
+    {
+        audio_sound_set_velocity( get(), detail::toC( velocity ) );
+    }
 
-    /// <summary>
-    /// Set the maximum distance for attenuation of this sound.
-    /// </summary>
-    /// <param name="maxDistance">The maximum distance for attenuation of this sound.</param>
-    void setMaxDistance( float maxDistance );
+    Vector getVelocity() const noexcept
+    {
+        return detail::fromC( audio_sound_get_velocity( get() ) );
+    }
 
-    /// <summary>
-    /// Get the maximum distance for attenuation of this sound.
-    /// </summary>
-    /// <returns>The maximum distance for attenuation of this sound.</returns>
-    float getMaxDistance() const;
+    /// Set the sound cone (angles in radians).
+    void setCone( float innerAngle, float outerAngle, float outerGain ) noexcept
+    {
+        audio_sound_set_cone( get(), innerAngle, outerAngle, outerGain );
+    }
 
-    /// <summary>
-    /// Set the factor for the doppler effect of this sound.
-    /// </summary>
-    /// <param name="dopplerFactor">The doppler effect factor to apply to this sound.</param>
-    void setDopplerFactor( float dopplerFactor );
+    void getCone( float& innerAngle, float& outerAngle, float& outerGain ) const noexcept
+    {
+        audio_sound_get_cone( get(), &innerAngle, &outerAngle, &outerGain );
+    }
 
-    /// <summary>
-    /// Get the factor for the doppler effect of this sound.
-    /// </summary>
-    /// <returns>The doppler effect factor.</returns>
-    float getDopplerFactor() const;
+    void setAttenuationModel( AttenuationModel model ) noexcept
+    {
+        audio_sound_set_attenuation_model( get(), static_cast<audio_attenuation_model>( model ) );
+    }
 
-    /// <summary>
-    /// Fade this sound in or out over a period of time.
-    /// </summary>
-    /// <typeparam name="Rep">The representation of the duration.</typeparam>
-    /// <typeparam name="Period">The duration period.</typeparam>
-    /// <param name="endVolume">The volume to fade this sound to.</param>
-    /// <param name="duration">The time to get to the `endVolume`.</param>
-    template<class Rep, class Period = std::ratio<1>>
-    void setFade( float endVolume, const std::chrono::duration<Rep, Period>& duration );
+    AttenuationModel getAttenuationModel() const noexcept
+    {
+        return static_cast<AttenuationModel>( audio_sound_get_attenuation_model( get() ) );
+    }
 
-    /// <summary>
-    /// Fade this sound in or out over a number of milliseconds.
-    /// </summary>
-    /// <param name="endVolume">The volume to fade this sound to.</param>
-    /// <param name="milliseconds">The duration in milliseconds to fade to `endVolume`.</param>
-    void setFade( float endVolume, uint64_t milliseconds );
+    void setRollOff( float rollOff ) noexcept
+    {
+        audio_sound_set_rolloff( get(), rollOff );
+    }
 
-    /// <summary>
-    /// Fade this sound from a starting volume to an ending volume over a period of time.
-    /// </summary>
-    /// <typeparam name="Rep">The representation of the duration.</typeparam>
-    /// <typeparam name="Period">The duration period.</typeparam>
-    /// <param name="beginVolume">The volume to start this fade from.</param>
-    /// <param name="endVolume">The volume to fade this sound to.</param>
-    /// <param name="duration">The time to get to the `endVolume`.</param>
-    template<class Rep, class Period = std::ratio<1>>
-    void setFade( float beginVolume, float endVolume, const std::chrono::duration<Rep, Period>& duration );
+    float getRollOff() const noexcept
+    {
+        return audio_sound_get_rolloff( get() );
+    }
 
-    /// <summary>
-    /// Fade this sound from a starting volume to an ending volume over a number of milliseconds.
-    /// </summary>
-    /// <param name="beginVolume">The volume to start this fade from.</param>
-    /// <param name="endVolume">The volume to fade this sound to.</param>
-    /// <param name="milliseconds">The duration in milliseconds to fade to `endVolume`.</param>
-    void setFade( float beginVolume, float endVolume, uint64_t milliseconds );
+    void setMinGain( float minGain ) noexcept
+    {
+        audio_sound_set_min_gain( get(), minGain );
+    }
 
-    /// <summary>
-    /// Schedule this sound to start playing at a specific time.
-    /// Note: The sound must be explicitly started using `play`.
-    /// </summary>
-    /// <typeparam name="Rep">The representation of the duration.</typeparam>
-    /// <typeparam name="Period">The duration period.</typeparam>
-    /// <param name="duration">The duration to wait before playing this sound.</param>
-    template<class Rep, class Period = std::ratio<1>>
-    void setStartTime( const std::chrono::duration<Rep, Period>& duration );
+    float getMinGain() const noexcept
+    {
+        return audio_sound_get_min_gain( get() );
+    }
 
-    /// <summary>
-    /// Schedule this sound to start playing at a specific time.
-    /// Note: The sound must be explicitly started using `play`.
-    /// </summary>
-    /// <param name="milliseconds">The duration in milliseconds to start playing this sound.</param>
-    void setStartTime( uint64_t milliseconds );
+    void setMaxGain( float maxGain ) noexcept
+    {
+        audio_sound_set_max_gain( get(), maxGain );
+    }
 
-    /// <summary>
-    /// Schedule this sound to stop playing at a specific time.
-    /// Note: The sound must be explicitly started using `play`.
-    /// </summary>
-    /// <typeparam name="Rep">The representation of the duration.</typeparam>
-    /// <typeparam name="Period">The duration period.</typeparam>
-    /// <param name="duration">The duration to wait before stopping this sound.</param>
-    template<class Rep, class Period = std::ratio<1>>
-    void setStopTime( const std::chrono::duration<Rep, Period>& duration );
+    float getMaxGain() const noexcept
+    {
+        return audio_sound_get_max_gain( get() );
+    }
 
-    /// <summary>
-    /// Schedule this sound to stop playing at a specific time.
-    /// Note: The sound must be explicitly started using `play`.
-    /// </summary>
-    /// <param name="milliseconds">The duration in milliseconds to stop playing this sound.</param>
-    void setStopTime( uint64_t milliseconds );
+    void setMinDistance( float minDistance ) noexcept
+    {
+        audio_sound_set_min_distance( get(), minDistance );
+    }
 
-    Sound();
-    ~Sound();
-    Sound( const Sound& );
-    Sound( Sound&& ) noexcept;
-    Sound& operator=( const Sound& );
-    Sound& operator=( Sound&& ) noexcept;
+    float getMinDistance() const noexcept
+    {
+        return audio_sound_get_min_distance( get() );
+    }
 
-    /// <summary>
-    /// Allow nullptr assignment.
-    /// </summary>
-    /// <remarks>
-    /// Assigning `nullptr` will release the underlying implementation.
-    /// This is the same as using the `reset` function on this object.
-    /// </remarks>
-    Sound& operator=( std::nullptr_t ) noexcept;
+    void setMaxDistance( float maxDistance ) noexcept
+    {
+        audio_sound_set_max_distance( get(), maxDistance );
+    }
 
-    /// <summary>
-    /// Allow for null checks.
-    /// </summary>
-    bool operator==( std::nullptr_t ) const noexcept;
-    bool operator!=( std::nullptr_t ) const noexcept;
+    float getMaxDistance() const noexcept
+    {
+        return audio_sound_get_max_distance( get() );
+    }
 
-    /// <summary>
-    /// Explicit bool conversion allows to check for a valid object.
-    /// </summary>
-    /// <returns>`true` if this object contains a valid pointer to implementation. `false` otherwise.</returns>
-    explicit operator bool() const noexcept;
+    void setDopplerFactor( float dopplerFactor ) noexcept
+    {
+        audio_sound_set_doppler_factor( get(), dopplerFactor );
+    }
 
-    /// <summary>
-    /// Get a pointer to the implementation.
-    /// </summary>
-    /// <returns>A pointer to the Sound implementation.</returns>
-    std::shared_ptr<SoundImpl> get() const noexcept;
+    float getDopplerFactor() const noexcept
+    {
+        return audio_sound_get_doppler_factor( get() );
+    }
 
-    /// <summary>
-    /// Release the underlying pointer to implementation.
-    /// </summary>
-    void reset() noexcept;
-
-protected:
-    explicit Sound( std::shared_ptr<SoundImpl> impl );
+    /// The underlying C handle.
+    audio_sound* get() const noexcept
+    {
+        return impl.get();
+    }
 
 private:
-    std::shared_ptr<SoundImpl> impl;
+    Result create( audio_device* device, const std::filesystem::path& filePath, Type type )
+    {
+        // Only release this handle: other copies keep the previous sound.
+        reset();
+
+        const audio_sound_flags flags  = type == Type::Music ? AUDIO_SOUND_FLAGS_MUSIC : AUDIO_SOUND_FLAG_NONE;
+        audio_sound*            sound  = nullptr;
+        const audio_result      result = audio_sound_create( device, detail::toUtf8( filePath ).c_str(), flags, &sound );
+        impl                           = detail::adopt( sound, &audio_sound_destroy );
+        return detail::toResult( result );
+    }
+
+    std::shared_ptr<audio_sound> impl;
 };
-
-template<typename Rep, typename Period>
-void Sound::seek( const std::chrono::duration<Rep, Period>& duration )
-{
-    seek( std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
-}
-
-template<class Rep, class Period>
-void Sound::setFade( float endVolume, const std::chrono::duration<Rep, Period>& duration )
-{
-    setFade( endVolume, std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
-}
-
-template<class Rep, class Period>
-void Sound::setFade( float beginVolume, float endVolume, const std::chrono::duration<Rep, Period>& duration )
-{
-    setFade( beginVolume, endVolume,
-             std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
-}
-
-template<class Rep, class Period>
-void Sound::setStartTime( const std::chrono::duration<Rep, Period>& duration )
-{
-    setStartTime( std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
-}
-
-template<class Rep, class Period>
-void Sound::setStopTime( const std::chrono::duration<Rep, Period>& duration )
-{
-    setStopTime( std::chrono::duration_cast<std::chrono::milliseconds>( duration ).count() );
-}
 
 }  // namespace Audio
