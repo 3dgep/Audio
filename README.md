@@ -58,10 +58,10 @@ Choose one of the following:
 
 ### Prebuilt Packages
 
-There are two kinds of packages. If you are not sure, use the static one:
+There are two kinds of packages. If you are not sure, use the static one: it has no DLL that you need to copy.
 
 * `Audio-<version>-windows-x64-static.zip`: a static library (`Audio.lib`).
-* `Audio-<version>-windows-x64-shared.zip`: a shared library (`Audio.dll`). Copy `Audio.dll` next to your game's `.exe`.
+* `Audio-<version>-windows-x64-shared.zip`: a shared library (`Audio.dll`). Your game needs `Audio.dll` next to its `.exe` (see [Copy the DLL](#5-copy-the-dll-shared-package-only)).
 
 Both packages work with Visual Studio 2022 and newer.
 
@@ -115,47 +115,160 @@ target_link_libraries(MyGame PRIVATE Audio::Audio)
 
 ## Adding the Library to a Visual Studio Project
 
-Copy the `include` and `lib` folders of the package (or of this repository, if you [built it yourself](#building-from-source)) to a folder in your project, for example `extern\Audio`:
+These steps add a [prebuilt package](#prebuilt-packages) to your own Visual Studio project. They use a project called `MyDemoGame` as an example.
+
+### 1. Copy the Library Into Your Project
+
+Extract the package and copy its folders to a new `extern\Audio` folder next to your project file (`MyDemoGame.vcxproj`):
+
+```txt
+MyDemoGame
+├── MyDemoGame.vcxproj
+├── main.cpp
+└── extern
+    └── Audio
+        ├── include          (the header files)
+        │   └── Audio
+        │       ├── Audio.hpp
+        │       └── ...
+        ├── lib              (the libraries)
+        │   ├── Debug
+        │   │   └── Audio.lib
+        │   └── Release
+        │       └── Audio.lib
+        └── bin              (shared package only)
+            ├── Debug
+            │   └── Audio.dll
+            └── Release
+                └── Audio.dll
+```
 
 ![Folder Structure](docs/images/Folder%20Structure.png)
 
-```txt
-├── MyDemoGame
-│   ├── extern
-│   │   ├── Audio
-│   │   │   ├── include
-│   │   │   │   ├── Audio
-│   │   │   │   │   ├── audio.h
-│   │   │   │   │   ├── Audio.hpp
-│   │   │   │   │   ├── ...
-│   │   │   ├── lib
-│   │   │   │   ├── Debug
-│   │   │   │   │   ├── Audio.lib
-│   │   │   │   ├── Release
-│   │   │   │   │   ├── Audio.lib
-```
+> **Tip**: If you [built the library yourself](#building-from-source), copy the `include` and `lib` folders (and for the shared library, the `bin` folder) from the root of this repository instead.
 
-Then open your project's settings (right-click the project and select **Properties**). Set **Configuration** to **All Configurations** at the top of the dialog, so the settings apply to both Debug and Release.
+### 2. Open the Project Properties
 
-### C/C++ Settings
+In **Solution Explorer**, right-click your project and select **Properties**. At the top of the dialog, set:
+
+* **Configuration** to **All Configurations**, so your settings apply to both Debug and Release.
+* **Platform** to **x64**. The library is 64-bit only.
+
+The settings below use `$(ProjectDir)`. Visual Studio replaces it with the folder that contains your project file, so the paths keep working when you move or share your project.
+
+### 3. Add the Include Folder
 
 ![C/C++ Settings](docs/images/Property%20Pages%20Dialog%20Box.png)
 
-1. Under **C/C++ > General**, add the `Audio\include` folder to **Additional Include Directories**.
-2. Under **C/C++ > Language**, set **C++ Language Standard** to **ISO C++17 Standard** or newer.
+1. Go to **C/C++ > General**. In **Additional Include Directories**, add:
 
-### Linker Settings
+   ```txt
+   $(ProjectDir)extern\Audio\include
+   ```
+
+2. Go to **C/C++ > Language**. Set **C++ Language Standard** to **ISO C++17 Standard** or newer.
+
+### 4. Link With the Library
 
 ![Linker/General Settings](docs/images/Linker%20General%20Settings.png)
 
-1. Under **Linker > General**, add `Audio\lib\$(Configuration)` to **Additional Library Directories**. `$(Configuration)` becomes `Debug` or `Release`, depending on what you are building.
-2. Under **Linker > Input**, add `Audio.lib` to **Additional Dependencies**.
+1. Go to **Linker > General**. In **Additional Library Directories**, add:
+
+   ```txt
+   $(ProjectDir)extern\Audio\lib\$(Configuration)
+   ```
+
+   `$(Configuration)` is replaced with `Debug` or `Release`, depending on what you are building.
+
+2. Go to **Linker > Input**. In **Additional Dependencies**, add `Audio.lib`. If the field already contains something, separate the entries with a semicolon, for example:
+
+   ```txt
+   Audio.lib;%(AdditionalDependencies)
+   ```
 
 ![Linker/Input Settings](docs/images/Linker%20Input%20Settings.png)
 
-You should now be able to build your project. If you have any issues, join our Discord server: [3dgep.com Discord Server](https://discord.gg/gsxxaxc)
+### 5. Copy the DLL (Shared Package Only)
 
-> **Tip**: Instead of using `Audio.lib`, you can also copy the [include](include/) and [src](src/) folders into your project and add the `.c` files from `src` to it.
+Skip this step if you use the static package.
+
+A program that uses `Audio.dll` can only start if `Audio.dll` is in the same folder as the program's `.exe`. For a new Visual Studio project, the `.exe` is in the `x64\Debug` or `x64\Release` folder of your solution, **not** in your project folder.
+
+Let Visual Studio copy the DLL there every time you build: go to **Build Events > Post-Build Event** and set **Command Line** to:
+
+```txt
+copy /y "$(ProjectDir)extern\Audio\bin\$(Configuration)\Audio.dll" "$(OutDir)"
+```
+
+`$(OutDir)` is the folder where Visual Studio puts your `.exe`.
+
+Click **OK** to save the project settings.
+
+### 6. Add Your Sound Files
+
+Your program loads sound files from its *working directory*:
+
+* When you run your program from Visual Studio (<kbd>F5</kbd>), that is your **project folder** (next to `MyDemoGame.vcxproj`).
+* When you run the `.exe` directly (for example by double-clicking it), that is the folder of the `.exe`.
+
+So put your sound files in your project folder, for example in an `assets` folder, and load them with a path relative to the project folder:
+
+```cpp
+Audio::Sound coin { "assets/coin.wav" };
+```
+
+When you share your game, copy the `assets` folder next to the `.exe` (and `Audio.dll`, if you use the shared package).
+
+### 7. Test It
+
+Replace your `main.cpp` with the following code, and put a sound file called `coin.wav` in the `assets` folder of your project:
+
+```cpp
+#include <Audio/Audio.hpp>
+
+#include <iostream>
+
+int main()
+{
+    Audio::Sound coin { "assets/coin.wav" };
+    if ( !coin )
+    {
+        std::cout << "Could not load assets/coin.wav." << std::endl;
+        return 1;
+    }
+
+    coin.play();
+
+    // Sounds play in the background. Wait, so the program doesn't end before the sound does.
+    std::cout << "Press Enter to quit." << std::endl;
+    std::cin.get();
+}
+```
+
+Press <kbd>F5</kbd>. You should hear the sound.
+
+### Troubleshooting
+
+| Error | Fix |
+| --- | --- |
+| `cannot open source file "Audio/Audio.hpp"` or `C1083: Cannot open include file: 'Audio/Audio.hpp'` | Check the include folder in [step 3](#3-add-the-include-folder). Make sure **Configuration** was set to **All Configurations** when you changed it. |
+| `The contents of <filesystem> are available only with C++17 or later.` | Set the C++ Language Standard to C++17 or newer ([step 3](#3-add-the-include-folder)). |
+| `LNK1104: cannot open file 'Audio.lib'` | Check the library folder in [step 4](#4-link-with-the-library), and that `lib\Debug` and `lib\Release` both contain `Audio.lib`. |
+| `LNK2019: unresolved external symbol audio_...` | Add `Audio.lib` to **Additional Dependencies** ([step 4](#4-link-with-the-library)). |
+| `LNK4272: library machine type 'x64' conflicts with target machine type 'x86'` | Set **Platform** to **x64** ([step 2](#2-open-the-project-properties)) and build for x64 (in the toolbar, next to Debug/Release). |
+| `The code execution cannot proceed because Audio.dll was not found` | Copy `Audio.dll` next to your `.exe` ([step 5](#5-copy-the-dll-shared-package-only)). |
+| `[Audio] Error: Failed to load sound 'assets/coin.wav'` | The file isn't where your program looks for it. See [step 6](#6-add-your-sound-files). |
+
+If you still have problems, ask on our Discord server: [3dgep.com Discord Server](https://discord.gg/gsxxaxc)
+
+### Using the Source Files Instead
+
+Instead of linking with `Audio.lib`, you can also add the library's source files to your project:
+
+1. Copy the [include](include/) and [src](src/) folders of this repository to `extern\Audio` in your project.
+2. Add the include folder ([step 3](#3-add-the-include-folder)). Skip steps 4 and 5.
+3. In **Solution Explorer**, right-click your project and select **Add > Existing Item**. Add the five `.c` files from `extern\Audio\src`: `audio_device.c`, `audio_sound.c`, `audio_waveform.c`, `miniaudio.c` and `stb_vorbis.c`.
+4. If your project uses precompiled headers (`pch.h`), select the five `.c` files in **Solution Explorer**, open their **Properties**, and set **C/C++ > Precompiled Headers > Precompiled Header** to **Not Using Precompiled Headers**.
 
 ## Building From Source
 
