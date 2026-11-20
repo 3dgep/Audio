@@ -22,6 +22,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - `Waveform::isPlaying`.
 - `Device::getSampleRate`, `Device::getChannels` and `Device::getListenerCount`.
 - A C example (`examples/c_api`).
+- Web (WebAssembly) builds with Emscripten: the `AUDIO_BUILD_WEB` CMake option and the `emscripten` preset. CMake uses an installed Emscripten SDK, or downloads one into `out/emsdk`. Web builds go to `lib/web` and `bin/web`.
 - CMake options `AUDIO_USE_SYSTEM_DEPS` (use an installed miniaudio and stb_vorbis) and `AUDIO_MSVC_ANY_CRT` (turn off the `/MT /Zl` build of the static library).
 
 ### Changed

@@ -304,6 +304,21 @@ cmake --build build
 
 Use `-DCMAKE_BUILD_TYPE=Debug` for a Debug build, and add `-DBUILD_SHARED_LIBS=ON` to build a shared library.
 
+### CMake for the Web (Emscripten)
+
+The library can also be built for the web (WebAssembly) with [Emscripten](https://emscripten.org/):
+
+```sh
+cmake --preset emscripten
+cmake --build --preset emscripten-release
+```
+
+The `emscripten` preset sets `AUDIO_BUILD_WEB=ON`. CMake then uses the Emscripten SDK you have installed (from `EMSDK`, `emcc` on the `PATH`, or `~/emsdk`). If you don't have one, it downloads Emscripten into `out/emsdk` the first time (about 1 GB). On Windows, Ninja is used from the `PATH`, or else the one that comes with Visual Studio.
+
+The library goes to `lib/web/Debug` and `lib/web/Release`. The examples above are desktop only.
+
+> **Note**: Browsers only play sound after the user clicks or presses a key on the page. The library starts the sound automatically after that first click or key press.
+
 ### Build Output
 
 * The library goes to the `lib` folder (`lib\Debug\Audio.lib` and `lib\Release\Audio.lib`). On Linux, it is `lib/Debug/libAudio.a` and `lib/Release/libAudio.a`, or `bin/Debug/libAudio.so` and `bin/Release/libAudio.so` for the shared library.

@@ -11,6 +11,11 @@ option( BUILD_SHARED_LIBS "Build Audio library as a shared library (DLL)." OFF )
 option( AUDIO_USE_SYSTEM_DEPS "Use installed miniaudio and stb_vorbis instead of the copies in src/." OFF )
 option( AUDIO_MSVC_ANY_CRT "MSVC static library: build with /MT /Zl so it links with any C runtime (/MD, /MDd, /MT, /MTd). Turn off to use CMAKE_MSVC_RUNTIME_LIBRARY." ON )
 
+option( AUDIO_BUILD_WEB "Build for the web (WebAssembly) with Emscripten. Downloads the Emscripten SDK if it is not installed." OFF )
+
+# The web build needs the Emscripten toolchain, which must be set before project().
+include( cmake/Emscripten.cmake )
+
 # Use solution folders in Visual Studio.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -22,9 +27,13 @@ if( CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     # overwrite each other. Because the paths contain a generator expression,
     # multi-config generators (Visual Studio, Ninja Multi-Config) don't append another
     # configuration subdirectory, so all generators produce the same layout.
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/$<CONFIG>)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/$<CONFIG>)
+    # Web builds go to lib/web and bin/web, so they don't mix with desktop builds.
+    if(EMSCRIPTEN)
+        set(AUDIO_OUTPUT_SUBDIR web/)
+    endif()
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib/${AUDIO_OUTPUT_SUBDIR}$<CONFIG>)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${AUDIO_OUTPUT_SUBDIR}$<CONFIG>)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${AUDIO_OUTPUT_SUBDIR}$<CONFIG>)
 endif()
 
 # Enable multi-processor builds in MSVC.
@@ -115,7 +124,9 @@ elseif( MSVC AND AUDIO_MSVC_ANY_CRT )
     target_compile_options( Audio PRIVATE /Zl )
 endif()
 
-if( UNIX )
+# Emscripten: no threads. miniaudio plays through Web Audio without them, and
+# -pthread would require a web server that sends the COOP/COEP headers.
+if( UNIX AND NOT EMSCRIPTEN )
     find_package( Threads REQUIRED )
     target_link_libraries( Audio PUBLIC Threads::Threads m ${CMAKE_DL_LIBS} )
 endif()

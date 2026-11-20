@@ -4,6 +4,12 @@ cmake_minimum_required( VERSION 4.0...4.2 )
 # that folder as the working directory (or pass -cwd path/to/examples/assets).
 set( AUDIO_EXAMPLE_ASSETS ${CMAKE_CURRENT_SOURCE_DIR}/assets )
 
+# These examples are desktop only: they run in a loop that never returns, which
+# would freeze a web page.
+if( EMSCRIPTEN )
+    return()
+endif()
+
 # getting_started: narration, music and a waveform sound effect.
 add_executable( getting_started
     getting_started/main.cpp

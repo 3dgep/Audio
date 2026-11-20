@@ -97,9 +97,33 @@
                 "CMAKE_CXX_COMPILER": "clang++",
                 "BUILD_SHARED_LIBS": "ON"
             }
+        },
+        {
+            "name": "emscripten",
+            "displayName": "Emscripten (WebAssembly)",
+            "description": "Build for the web with Emscripten. Uses an installed Emscripten SDK, or downloads one to out/emsdk.",
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "cacheVariables": {
+                "AUDIO_BUILD_WEB": "ON",
+                "AUDIO_BUILD_EXAMPLES": "ON"
+            }
         }
     ],
     "buildPresets": [
+        {
+            "name": "emscripten-debug",
+            "displayName": "Emscripten Debug",
+            "configurePreset": "emscripten",
+            "configuration": "Debug"
+        },
+        {
+            "name": "emscripten-release",
+            "displayName": "Emscripten Release",
+            "configurePreset": "emscripten",
+            "configuration": "Release"
+        },
         {
             "name": "vs18-static-debug",
             "displayName": "Visual Studio 2026 Static Debug",
