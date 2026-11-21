@@ -276,7 +276,7 @@ You need Visual Studio 2022 or newer with the **Desktop development with C++** w
 
 ### Visual Studio
 
-Open [Audio.slnx](Audio.slnx) in Visual Studio 2026 and select **Build > Build Solution** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>). This builds `Audio.lib` and the three [examples](#examples). You don't need CMake for this. To run a different example, right-click it in **Solution Explorer** and select **Set as Startup Project**.
+Open [Audio.slnx](Audio.slnx) in Visual Studio 2026 and select **Build > Build Solution** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd>). This builds `Audio.lib` and the four [examples](#examples). You don't need CMake for this. Press <kbd>F5</kbd> to play the [game](#examples). To run a different example, right-click it in **Solution Explorer** and select **Set as Startup Project**.
 
 > **Note**: Visual Studio 2022 can't open `.slnx` solutions by default. With Visual Studio 2022, use [GenerateProjectFiles.bat](GenerateProjectFiles.bat) instead.
 
@@ -315,7 +315,13 @@ cmake --build --preset emscripten-release
 
 The `emscripten` preset sets `AUDIO_BUILD_WEB=ON`. CMake then uses the Emscripten SDK you have installed (from `EMSDK`, `emcc` on the `PATH`, or `~/emsdk`). If you don't have one, it downloads Emscripten into `out/emsdk` the first time (about 1 GB). On Windows, Ninja is used from the `PATH`, or else the one that comes with Visual Studio.
 
-The library goes to `lib/web/Debug` and `lib/web/Release`. The examples above are desktop only.
+The library goes to `lib/web/Debug` and `lib/web/Release`. The [game](#examples) example goes to `bin/web/Release/game.html` (with `game.js`, `game.wasm` and `game.data`). The other examples are desktop only. To play the game, serve the folder with a web server, for example:
+
+```sh
+python -m http.server --directory bin/web/Release
+```
+
+and open <http://localhost:8000/game.html>. Opening `game.html` directly from disk doesn't work, because browsers don't let a page load files that way.
 
 > **Note**: Browsers only play sound after the user clicks or presses a key on the page. The library starts the sound automatically after that first click or key press.
 
@@ -326,8 +332,9 @@ The library goes to `lib/web/Debug` and `lib/web/Release`. The examples above ar
 
 ### Examples
 
-The [examples](examples/) folder contains three examples:
+The [examples](examples/) folder contains four examples:
 
+* [game](examples/game/main.cpp): a small brick game with music, sound effects and waveform jingles. It runs on Windows, Linux, macOS and in a web browser. On Linux, it needs the X11 development files (`sudo apt install libx11-dev`).
 * [getting_started](examples/getting_started/main.cpp): narration, background music and a waveform sound effect.
 * [fade](examples/fade/main.cpp): fading sounds in and out.
 * [c_api](examples/c_api/main.c): using the library from C.

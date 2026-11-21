@@ -135,7 +135,7 @@ if( AUDIO_BUILD_EXAMPLES )
 	add_subdirectory( examples )
 	# Set the startup project.
     set_directory_properties( PROPERTIES
-        VS_STARTUP_PROJECT getting_started
+        VS_STARTUP_PROJECT game
 	)
 endif( AUDIO_BUILD_EXAMPLES)
 

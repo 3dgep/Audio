@@ -41,8 +41,8 @@ int main( int argc, char* argv[] )
 
     for ( i = 1; i + 1 < argc; ++i )
     {
-        if ( strcmp( argv[i], "-cwd" ) == 0 )
-            chdir( argv[++i] );
+        if ( strcmp( argv[i], "-cwd" ) == 0 && chdir( argv[++i] ) != 0 )
+            printf( "Could not change the working directory to %s\n", argv[i] );
     }
 
     printf( "Audio library version %u.%u.%u\n",

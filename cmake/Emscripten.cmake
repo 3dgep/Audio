@@ -26,7 +26,8 @@ set( AUDIO_EMSDK_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/emsdk" CACHE PATH "Folder
 # Emscripten builds with Ninja or Make. Visual Studio comes with Ninja, but doesn't
 # add it to the PATH outside the Developer Command Prompt. Find it first: the
 # download below uses the same generator.
-if( CMAKE_HOST_WIN32 AND CMAKE_GENERATOR MATCHES "Ninja" AND NOT CMAKE_MAKE_PROGRAM )
+# Look again if the cached Ninja was removed (for example, when Visual Studio was updated).
+if( CMAKE_HOST_WIN32 AND CMAKE_GENERATOR MATCHES "Ninja" AND NOT EXISTS "${CMAKE_MAKE_PROGRAM}" )
     find_program( _audio_ninja ninja NO_CACHE )
     if( NOT _audio_ninja )
         set( _audio_vswhere "$ENV{ProgramFiles\(x86\)}/Microsoft Visual Studio/Installer/vswhere.exe" )
@@ -39,7 +40,7 @@ if( CMAKE_HOST_WIN32 AND CMAKE_GENERATOR MATCHES "Ninja" AND NOT CMAKE_MAKE_PROG
             set( _audio_ninja "${_audio_vs_path}/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" )
             if( EXISTS "${_audio_ninja}" )
                 file( TO_CMAKE_PATH "${_audio_ninja}" _audio_ninja )
-                set( CMAKE_MAKE_PROGRAM "${_audio_ninja}" CACHE FILEPATH "Ninja" )
+                set( CMAKE_MAKE_PROGRAM "${_audio_ninja}" CACHE FILEPATH "Ninja" FORCE )
             endif()
         endif()
     endif()

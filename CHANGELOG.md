@@ -22,6 +22,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - `Waveform::isPlaying`.
 - `Device::getSampleRate`, `Device::getChannels` and `Device::getListenerCount`.
 - A C example (`examples/c_api`).
+- A game example (`examples/game`): a small brick game with streamed music, panned sound effects and waveform jingles. It runs on Windows, Linux, macOS (using [fenster](https://github.com/zserge/fenster)) and in a web browser (Emscripten).
 - Web (WebAssembly) builds with Emscripten: the `AUDIO_BUILD_WEB` CMake option and the `emscripten` preset. CMake uses an installed Emscripten SDK, or downloads one into `out/emsdk`. Web builds go to `lib/web` and `bin/web`.
 - CMake options `AUDIO_USE_SYSTEM_DEPS` (use an installed miniaudio and stb_vorbis) and `AUDIO_MSVC_ANY_CRT` (turn off the `/MT /Zl` build of the static library).
 
@@ -43,7 +44,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - Updated miniaudio to 0.11.26.
 - **Breaking:** The Visual Studio solution is now `Audio.slnx` (the XML solution format of Visual Studio 2026) instead of `Audio.sln`, and the projects use the Visual Studio 2026 toolset (v145). Visual Studio 2022 can't open `.slnx` solutions by default; use `GenerateProjectFiles.bat` instead. If the projects are opened in Visual Studio 2022, they use its own toolset (v143).
 - **Breaking:** The examples moved from `example` to `examples`, with a folder per example: `getting_started` (was `example`), `fade` (was `fadeExample`) and `c_api` (was `cExample`). Their audio files are in `examples/assets`, which is the working directory when they run from Visual Studio.
-- `Audio.slnx` contains all three examples, not only `getting_started`, in an `examples` solution folder. `getting_started` is the startup project, so F5 runs it.
+- `Audio.slnx` contains all examples, not only `getting_started`, in an `examples` solution folder. `game` is the startup project, so F5 runs it.
 - Release packages are built with Visual Studio 2022, so they work with Visual Studio 2022 and newer. The compiler is no longer part of the package name, and the platform is named `windows-x64` instead of `Windows-AMD64` (for example `Audio-2.0.0-windows-x64-static.zip`).
 - `GeneratePackages.bat` builds the packages with the Visual Studio 2022 toolset when it is available (warning otherwise), uses the CMake that comes with Visual Studio if CMake is not installed, works from any folder, and collects the packages in `out\packages`.
 - **Breaking:** The vcpkg port is renamed from `audio` to `3dgep-audio`. It now depends on vcpkg's `miniaudio` and `stb` ports, uses the triplet's C runtime, and installs PDBs and the usage file.

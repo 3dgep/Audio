@@ -6,6 +6,7 @@
   <Folder Name="/examples/">
     <Project Path="examples/c_api/c_api.vcxproj" Id="926be5bc-6a2b-4647-bccd-fc5918853803" />
     <Project Path="examples/fade/fade.vcxproj" Id="351ab62d-12d4-48e8-bcdc-790e79eea7b7" />
-    <Project Path="examples/getting_started/getting_started.vcxproj" Id="d74f95cb-05c7-46a4-ae53-fdd595fe722c" DefaultStartup="true" />
+    <Project Path="examples/game/game.vcxproj" Id="287990f8-7d88-4e7f-a566-f6dfdb4f7411" DefaultStartup="true" />
+    <Project Path="examples/getting_started/getting_started.vcxproj" Id="d74f95cb-05c7-46a4-ae53-fdd595fe722c" />
   </Folder>
 </Solution>
