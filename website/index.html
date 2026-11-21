@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Audio Library: game audio for C++ and C</title>
+    <meta name="description" content="A minimalistic audio library for games, with a C++ and a C API, built on miniaudio. Play sounds in one line, stream music, spatial audio and retro waveforms.">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="site-header">
+        <nav class="nav wrap" aria-label="Main">
+            <a class="nav-home" href="#top" aria-label="Audio Library">
+                <svg class="logo logo-small" viewBox="0 0 29 7" aria-hidden="true" shape-rendering="crispEdges"><use href="#logo-pixels"/></svg>
+            </a>
+            <ul class="nav-links">
+                <li><a href="#play">Play</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#examples">Examples</a></li>
+                <li><a href="#get">Get it</a></li>
+                <li><a href="https://github.com/3dgep/Audio">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main id="top">
+        <!-- Hero -->
+        <section class="hero wrap">
+            <h1 class="visually-hidden">Audio Library</h1>
+            <svg class="logo logo-hero" viewBox="0 0 29 7" role="img" aria-label="Audio" shape-rendering="crispEdges">
+                <g id="logo-pixels">
+                    <g fill="var(--red)"><rect x="1" y="0" width="3" height="1"/><rect x="0" y="1" width="1" height="6"/><rect x="4" y="1" width="1" height="6"/><rect x="1" y="3" width="3" height="1"/></g>
+                    <g fill="var(--orange)"><rect x="6" y="0" width="1" height="6"/><rect x="10" y="0" width="1" height="6"/><rect x="7" y="6" width="3" height="1"/></g>
+                    <g fill="var(--yellow)"><rect x="12" y="0" width="4" height="1"/><rect x="12" y="1" width="1" height="5"/><rect x="16" y="1" width="1" height="5"/><rect x="12" y="6" width="4" height="1"/></g>
+                    <g fill="var(--green)"><rect x="19" y="0" width="3" height="1"/><rect x="20" y="1" width="1" height="5"/><rect x="19" y="6" width="3" height="1"/></g>
+                    <g fill="var(--blue)"><rect x="25" y="0" width="3" height="1"/><rect x="24" y="1" width="1" height="5"/><rect x="28" y="1" width="1" height="5"/><rect x="25" y="6" width="3" height="1"/></g>
+                </g>
+            </svg>
+            <p class="tagline">A minimalistic audio library for games.<br>Play a sound in one line of C++ or C.</p>
+            <div class="buttons">
+                <a class="button button-primary" href="#get">Get started</a>
+                <a class="button" href="#play">Play the demo</a>
+                <a class="button" href="https://github.com/3dgep/Audio">View on GitHub</a>
+            </div>
+
+<pre class="code hero-code" data-lang="cpp"><code>#include &lt;Audio/Audio.hpp&gt;
+
+int main()
+{
+    Audio::Sound music { "music.ogg", Audio::Sound::Type::Music };
+    music.setLooping( true );
+    music.play();
+
+    Audio::playSound( "coin.wav" );  // Fire and forget.
+    ...
+}</code></pre>
+            <p class="hero-note">No audio device to set up or shut down. The library does that for you.</p>
+        </section>
+
+        <div class="bricks" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+        <!-- The game -->
+        <section id="play" class="section wrap">
+            <h2>Play the demo</h2>
+            <p class="lead"><strong>Brick Bounce</strong> is one of the library's examples. Its music, sound effects and jingles all use the Audio library, compiled to WebAssembly. The same code runs on Windows, Linux and macOS.</p>
+
+            <div class="game">
+                <iframe src="game/game.html" title="Brick Bounce, a game made with the Audio library" loading="lazy" allow="autoplay"></iframe>
+            </div>
+            <p class="game-help">Click the game to start. Browsers only play sound after you click the page.<br>
+                Move: mouse or arrow keys &middot; Launch: click or space &middot; Pause: P</p>
+
+            <div class="cards cards-3">
+                <div class="card">
+                    <h3>Streamed music</h3>
+                    <p>The background music is streamed from an OGG file. It fades down when you pause, and fades out when the game is over.</p>
+                </div>
+                <div class="card">
+                    <h3>Panned effects</h3>
+                    <p>Every bounce is panned to where it happens. Hit bricks in a row and each one sounds a little higher.</p>
+                </div>
+                <div class="card">
+                    <h3>Waveform jingles</h3>
+                    <p>The level-clear and game-over tunes are made with a <code>Waveform</code>, without any sound files.</p>
+                </div>
+            </div>
+            <p class="more"><a href="https://github.com/3dgep/Audio/blob/main/examples/game/main.cpp">Read the game's source code &rarr;</a></p>
+        </section>
+
+        <div class="bricks" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+        <!-- Features -->
+        <section id="features" class="section wrap">
+            <h2>Features</h2>
+            <div class="cards cards-3 features">
+                <div class="card" style="--accent: var(--red)">
+                    <h3>Simple</h3>
+                    <p>Load a sound and play it. Copies of a sound share it, just like objects in C#, Java, Python or JavaScript.</p>
+                </div>
+                <div class="card" style="--accent: var(--orange)">
+                    <h3>Sounds and music</h3>
+                    <p>WAV, MP3, FLAC and OGG. Volume, panning, pitch, looping, fading and scheduled start and stop.</p>
+                </div>
+                <div class="card" style="--accent: var(--yellow)">
+                    <h3>Spatial audio</h3>
+                    <p>Place sounds in 3D space around the player, with up to 4 listeners for split-screen games.</p>
+                </div>
+                <div class="card" style="--accent: var(--green)">
+                    <h3>Retro waveforms</h3>
+                    <p>Generate sine, square, triangle and sawtooth tones for sound effects like early video games.</p>
+                </div>
+                <div class="card" style="--accent: var(--blue)">
+                    <h3>C++ and C</h3>
+                    <p>A header-only C++17 API on top of a stable C99 API. One library for both Debug and Release builds.</p>
+                </div>
+                <div class="card" style="--accent: var(--purple)">
+                    <h3>Runs everywhere</h3>
+                    <p>Windows, Linux and the web (Emscripten). Built on the excellent <a href="https://miniaud.io/">miniaudio</a>.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="bricks" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+        <!-- Examples -->
+        <section id="examples" class="section wrap">
+            <h2>Examples</h2>
+            <div class="tabs" data-tabs>
+                <div class="tab-list" role="tablist" aria-label="Code examples">
+                    <button role="tab" id="tab-sounds" aria-controls="panel-sounds" aria-selected="true">Sounds</button>
+                    <button role="tab" id="tab-music" aria-controls="panel-music" aria-selected="false" tabindex="-1">Music</button>
+                    <button role="tab" id="tab-spatial" aria-controls="panel-spatial" aria-selected="false" tabindex="-1">Spatial</button>
+                    <button role="tab" id="tab-waveforms" aria-controls="panel-waveforms" aria-selected="false" tabindex="-1">Waveforms</button>
+                    <button role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false" tabindex="-1">C API</button>
+                </div>
+
+                <div class="tab-panel" role="tabpanel" id="panel-sounds" aria-labelledby="tab-sounds">
+                    <p>Fire and forget, or load the sound for more control.</p>
+<pre class="code" data-lang="cpp"><code>Audio::playSound( "explosion.wav" );  // Fire and forget.
+
+Audio::Sound coin { "coin.wav" };
+coin.setVolume( 0.5f );  // 0 is silent, 1 is 100%.
+coin.setPan( -1.0f );    // -1 is left, 0 is centered, 1 is right.
+coin.setPitch( 1.5f );   // Higher values sound higher.
+coin.play();</code></pre>
+                </div>
+
+                <div class="tab-panel" role="tabpanel" id="panel-music" aria-labelledby="tab-music" hidden>
+                    <p>Music is streamed from the file while it plays, so it loads fast and uses little memory.</p>
+<pre class="code" data-lang="cpp"><code>using namespace std::chrono_literals;
+
+Audio::Sound music { "music.ogg", Audio::Sound::Type::Music };
+music.setLooping( true );
+music.play();
+
+music.setFade( 0.0f, 2s );  // Fade out over 2 seconds.</code></pre>
+                </div>
+
+                <div class="tab-panel" role="tabpanel" id="panel-spatial" aria-labelledby="tab-spatial" hidden>
+                    <p>What you hear depends on where the sound is, relative to the listener.</p>
+<pre class="code" data-lang="cpp"><code>Audio::Sound coin { "coin.wav" };
+coin.setPosition( { x, y, z } );  // Where the sound is in the world.
+coin.play();
+
+Audio::Listener listener = Audio::getListener();
+listener.setPosition( player.getPosition() );</code></pre>
+                </div>
+
+                <div class="tab-panel" role="tabpanel" id="panel-waveforms" aria-labelledby="tab-waveforms" hidden>
+                    <p>Generate a tone instead of playing a file. Change the frequency to change the pitch.</p>
+<pre class="code" data-lang="cpp"><code>// A square wave with an amplitude of 0.2, at 440 Hz.
+Audio::Waveform beep { Audio::Waveform::Type::Square, 0.2f, 440.0f };
+beep.start();
+...
+beep.setFrequency( 880.0f );  // One octave higher.
+...
+beep.stop();</code></pre>
+                </div>
+
+                <div class="tab-panel" role="tabpanel" id="panel-c" aria-labelledby="tab-c" hidden>
+                    <p>The same library from C, or any language that can call C functions.</p>
+<pre class="code" data-lang="c"><code>#include &lt;Audio/audio.h&gt;
+...
+audio_play_sound( NULL, "coin.wav" );  // NULL: the default device.
+
+audio_sound* music = NULL;
+if ( audio_sound_create( NULL, "music.ogg", AUDIO_SOUND_FLAGS_MUSIC, &amp;music ) == AUDIO_SUCCESS )
+{
+    audio_sound_play( music );
+}
+...
+audio_sound_destroy( music );</code></pre>
+                </div>
+            </div>
+            <p class="more"><a href="https://github.com/3dgep/Audio#playing-sounds">More in the documentation &rarr;</a></p>
+        </section>
+
+        <div class="bricks" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+        <!-- Get it -->
+        <section id="get" class="section wrap">
+            <h2>Get the library</h2>
+            <p class="lead">Your project needs C++17 or newer (or C99 for the C API).</p>
+            <div class="cards cards-3 get">
+                <div class="card">
+                    <h3>Prebuilt package</h3>
+                    <p>For Visual Studio 2022 and newer. Download the <strong>static</strong> package from the Releases page, and follow the step-by-step guide.</p>
+                    <p class="card-links">
+                        <a class="button button-primary" href="https://github.com/3dgep/Audio/releases">Download</a>
+                        <a href="https://github.com/3dgep/Audio#adding-the-library-to-a-visual-studio-project">Visual Studio guide</a>
+                    </p>
+                </div>
+                <div class="card">
+                    <h3>CMake</h3>
+                    <p>Let CMake download and build it:</p>
+<pre class="code" data-lang="cmake"><code>include(FetchContent)
+FetchContent_Declare(Audio
+    GIT_REPOSITORY https://github.com/3dgep/Audio.git
+    GIT_TAG        v2.0.0)
+FetchContent_MakeAvailable(Audio)
+
+target_link_libraries(MyGame PRIVATE Audio::Audio)</code></pre>
+                </div>
+                <div class="card">
+                    <h3>vcpkg</h3>
+                    <p>Install the port from the repository's <code>ports</code> folder:</p>
+<pre class="code" data-lang="sh"><code>vcpkg install 3dgep-audio --overlay-ports=path/to/Audio/ports</code></pre>
+<pre class="code" data-lang="cmake"><code>find_package(Audio CONFIG REQUIRED)
+target_link_libraries(MyGame PRIVATE Audio::Audio)</code></pre>
+                </div>
+            </div>
+            <p class="more">Questions? Ask on the <a href="https://discord.gg/gsxxaxc">3dgep.com Discord server</a>.</p>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap footer-inner">
+            <p>The Audio library is free and open source (<a href="https://github.com/3dgep/Audio/blob/main/LICENSE">Unlicense</a>). Built on <a href="https://miniaud.io/">miniaudio</a> and <a href="https://github.com/nothings/stb">stb_vorbis</a>.</p>
+            <p>Demo music: <a href="https://opengameart.org/content/upbeat-chiptune-theme">Upbeat Chiptune Theme</a> by nihilocrat (CC0).</p>
+            <p>Made by <a href="https://www.3dgep.com/">3dgep.com</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

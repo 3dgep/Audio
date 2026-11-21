@@ -514,8 +514,8 @@ int main( int argc, char* argv[] )
             std::filesystem::current_path( argv[i + 1] );
     }
 
-    // Stream the music from the file, instead of loading it all into memory.
-    music.load( "chiptune_theme.ogg", Audio::Sound::Type::Stream );
+    // Music is streamed from the file while it plays, instead of loading it all into memory.
+    music.load( "chiptune_theme.ogg", Audio::Sound::Type::Music );
     music.setLooping( true );
     music.setVolume( 0.4f );
     music.play();  // On the web, the browser starts the sound after the first click.

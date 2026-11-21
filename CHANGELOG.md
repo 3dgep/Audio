@@ -24,6 +24,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - A C example (`examples/c_api`).
 - A game example (`examples/game`): a small brick game with streamed music, panned sound effects and waveform jingles. It runs on Windows, Linux, macOS (using [fenster](https://github.com/zserge/fenster)) and in a web browser (Emscripten).
 - Web (WebAssembly) builds with Emscripten: the `AUDIO_BUILD_WEB` CMake option and the `emscripten` preset. CMake uses an installed Emscripten SDK, or downloads one into `out/emsdk`. Web builds go to `lib/web` and `bin/web`.
+- A website for the library (`website`), with the game example playable in the browser. The `website` CMake target (in web builds) puts it together, and the `Website` workflow publishes it on GitHub Pages.
 - CMake options `AUDIO_USE_SYSTEM_DEPS` (use an installed miniaudio and stb_vorbis) and `AUDIO_MSVC_ANY_CRT` (turn off the `/MT /Zl` build of the static library).
 
 ### Changed

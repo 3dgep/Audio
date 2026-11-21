@@ -32,6 +32,25 @@ if( EMSCRIPTEN )
     endforeach()
     set_property( TARGET game APPEND PROPERTY LINK_DEPENDS ${GAME_SHELL} )
 
+    # website: the library's webpage (the website folder), with the game in its
+    # game folder. Build it with --target website; it goes to bin/web/<Config>/website.
+    set( WEBSITE_DIR $<TARGET_FILE_DIR:game>/website )
+    add_custom_target( website
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${WEBSITE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/website ${WEBSITE_DIR}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${WEBSITE_DIR}/game
+        COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE_DIR:game>/game.html
+            $<TARGET_FILE_DIR:game>/game.js
+            $<TARGET_FILE_DIR:game>/game.wasm
+            $<TARGET_FILE_DIR:game>/game.data
+            ${WEBSITE_DIR}/game/
+        DEPENDS game
+        COMMENT "Copying the website and the game to ${WEBSITE_DIR}"
+        VERBATIM
+    )
+    set_target_properties( website PROPERTIES FOLDER examples )
+
     # The other examples are desktop only: they run in a loop that never returns,
     # which would freeze a web page.
     return()

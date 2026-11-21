@@ -1,0 +1,496 @@
+/* The colors of the game (examples/game/main.cpp). */
+:root {
+    --background: #101828;
+    --surface: #182236;
+    --surface-light: #212d45;
+    --border: #303850;
+    --text: #e8ecf4;
+    --text-muted: #a0a8c0;
+    --red: #ff5050;
+    --orange: #ff9f40;
+    --yellow: #ffe050;
+    --green: #60d060;
+    --blue: #50a0ff;
+    --purple: #b070ff;
+    --accent: var(--yellow);
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-code: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --width: 1080px;
+
+    color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 72px;
+}
+
+body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+}
+
+a {
+    color: var(--blue);
+    text-underline-offset: 3px;
+}
+
+a:hover {
+    color: var(--yellow);
+}
+
+:focus-visible {
+    outline: 3px solid var(--yellow);
+    outline-offset: 2px;
+}
+
+code {
+    font-family: var(--font-code);
+    font-size: 0.9em;
+}
+
+:not(pre) > code {
+    background: var(--surface-light);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+}
+
+.wrap {
+    max-width: var(--width);
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* Headings use the game's chunky, uppercase look. */
+h1,
+h2,
+h3 {
+    font-family: var(--font-code);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.25;
+}
+
+h2 {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    margin: 0 0 0.5em;
+    color: var(--yellow);
+}
+
+h3 {
+    font-size: 1rem;
+    margin: 0 0 0.5em;
+}
+
+/* Navigation */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: rgb(16 24 40 / 0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 2px solid var(--border);
+}
+
+.nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 56px;
+}
+
+.nav-home {
+    display: flex;
+    padding: 6px 0;
+}
+
+.nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 20px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-code);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.nav-links a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.nav-links a:hover {
+    color: var(--yellow);
+}
+
+/* The pixel logo. */
+.logo {
+    display: block;
+    image-rendering: pixelated;
+}
+
+.logo-small {
+    width: 87px; /* 3 pixels per font pixel. */
+    height: 21px;
+}
+
+.logo-hero {
+    width: min(100%, 464px); /* 16 pixels per font pixel. */
+    height: auto;
+    margin: 0 auto;
+    filter: drop-shadow(0 6px 0 rgb(0 0 0 / 0.35));
+}
+
+/* Hero */
+.hero {
+    padding-top: 64px;
+    padding-bottom: 56px;
+    text-align: center;
+}
+
+.tagline {
+    font-size: clamp(1.15rem, 3vw, 1.45rem);
+    margin: 32px 0 28px;
+}
+
+.hero-code {
+    max-width: 640px;
+    margin: 40px auto 12px;
+    text-align: left;
+}
+
+.hero-note {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+/* Buttons */
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+}
+
+.button {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 2px solid var(--border);
+    border-bottom-width: 5px;
+    border-radius: 4px;
+    background: var(--surface);
+    color: var(--text);
+    font-family: var(--font-code);
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+}
+
+.button:hover {
+    color: var(--text);
+    background: var(--surface-light);
+}
+
+.button:active {
+    border-bottom-width: 2px;
+    transform: translateY(3px);
+}
+
+.button-primary {
+    background: var(--yellow);
+    border-color: #b89a20;
+    color: var(--background);
+}
+
+.button-primary:hover {
+    background: #fff07a;
+    color: var(--background);
+}
+
+/* A row of bricks between the sections. */
+.bricks {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    max-width: var(--width);
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.bricks span {
+    height: 10px;
+    border-bottom: 3px solid rgb(0 0 0 / 0.35);
+}
+
+.bricks span:nth-child(1) { background: var(--red); }
+.bricks span:nth-child(2) { background: var(--orange); }
+.bricks span:nth-child(3) { background: var(--yellow); }
+.bricks span:nth-child(4) { background: var(--green); }
+.bricks span:nth-child(5) { background: var(--blue); }
+.bricks span:nth-child(6) { background: var(--purple); }
+
+/* Sections */
+.section {
+    padding-top: 56px;
+    padding-bottom: 56px;
+}
+
+.lead {
+    font-size: 1.1rem;
+    max-width: 760px;
+    margin: 0 0 28px;
+}
+
+.more {
+    margin: 24px 0 0;
+    font-weight: 600;
+}
+
+/* The game */
+.game {
+    max-width: 960px;
+    margin: 0 auto;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    border: 4px solid var(--border);
+    border-radius: 4px;
+    box-shadow: 0 12px 0 rgb(0 0 0 / 0.35);
+}
+
+.game iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.game-help {
+    text-align: center;
+    color: var(--text-muted);
+    margin: 20px 0 36px;
+    font-size: 0.95rem;
+}
+
+/* Cards */
+.cards {
+    display: grid;
+    gap: 16px;
+}
+
+.cards-3 {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+
+.card {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-top: 6px solid var(--accent);
+    border-radius: 4px;
+    padding: 20px;
+    min-width: 0;
+}
+
+.card p {
+    margin: 0 0 12px;
+}
+
+.card p:last-child {
+    margin-bottom: 0;
+}
+
+.card h3 {
+    color: var(--accent);
+}
+
+.card .code {
+    margin: 0 0 12px;
+    font-size: 0.8rem;
+}
+
+.card .code:last-child {
+    margin-bottom: 0;
+}
+
+/* "Get the library": the prebuilt package on the left, CMake and vcpkg (with
+   code, so they need more room) stacked on the right. */
+.get {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+}
+
+.get .card:first-child {
+    grid-row: span 2;
+}
+
+@media (max-width: 860px) {
+    .get {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .get .card:first-child {
+        grid-row: auto;
+    }
+}
+
+.card-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 20px;
+    margin-top: 20px !important;
+}
+
+/* Code */
+.code {
+    background: #0a0f1a;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 18px;
+    margin: 0;
+    overflow-x: auto;
+    font-family: var(--font-code);
+    font-size: 0.88rem;
+    line-height: 1.55;
+    tab-size: 4;
+}
+
+.code code {
+    font-size: inherit;
+}
+
+/* Syntax colors, added by script.js. */
+.tok-comment { color: #6f7a94; font-style: italic; }
+.tok-string { color: var(--green); }
+.tok-number { color: var(--orange); }
+.tok-keyword { color: var(--purple); }
+.tok-preprocessor { color: var(--red); }
+.tok-type { color: var(--blue); }
+
+/* Tabs */
+.tab-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: -2px;
+}
+
+.tab-list button {
+    font: inherit;
+    font-family: var(--font-code);
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    padding: 10px 16px;
+    cursor: pointer;
+}
+
+.tab-list button:hover {
+    color: var(--text);
+}
+
+.tab-list button[aria-selected="true"] {
+    color: var(--background);
+    background: var(--yellow);
+    border-color: var(--yellow);
+}
+
+.tab-panel {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-top: 4px solid var(--yellow);
+    border-radius: 0 4px 4px 4px;
+    padding: 20px;
+}
+
+.tab-panel > p {
+    margin: 0 0 14px;
+}
+
+/* Footer */
+.site-footer {
+    margin-top: 24px;
+    border-top: 2px solid var(--border);
+    background: #0c1220;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+}
+
+.footer-inner {
+    padding-top: 28px;
+    padding-bottom: 36px;
+}
+
+.footer-inner p {
+    margin: 0 0 6px;
+}
+
+@media (max-width: 640px) {
+    body {
+        font-size: 16px;
+    }
+
+    .nav {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+        padding-top: 8px;
+        padding-bottom: 10px;
+    }
+
+    .nav-links {
+        gap: 4px 16px;
+    }
+
+    html {
+        scroll-padding-top: 100px;
+    }
+
+    .hero {
+        padding-top: 40px;
+    }
+
+    .code {
+        font-size: 0.8rem;
+        padding: 12px 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}

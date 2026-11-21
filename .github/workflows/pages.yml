@@ -1,0 +1,70 @@
+name: Website
+
+# Builds the website (the website folder, with the game example compiled to
+# WebAssembly) and publishes it on GitHub Pages: https://www.3dgep.com/Audio/
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time; a newer push replaces a waiting one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    env:
+      CMAKE_VERSION: 4.4.3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The examples need CMake 4.0 or newer.
+      - name: Install CMake and Ninja
+        run: |
+          name=cmake-$CMAKE_VERSION-linux-x86_64
+          url=https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION
+          cd "$RUNNER_TEMP"
+          curl -sSLO "$url/$name.tar.gz"
+          curl -sSLO "$url/cmake-$CMAKE_VERSION-SHA-256.txt"
+          grep " $name.tar.gz\$" "cmake-$CMAKE_VERSION-SHA-256.txt" | sha256sum -c -
+          tar -xzf "$name.tar.gz"
+          echo "$RUNNER_TEMP/$name/bin" >> "$GITHUB_PATH"
+          sudo apt-get install -y ninja-build
+
+      # CMake downloads the Emscripten SDK to out/emsdk (see cmake/Emscripten.cmake).
+      # Keep it between runs, until the version in that file changes.
+      - name: Cache the Emscripten SDK
+        uses: actions/cache@v4
+        with:
+          path: out/emsdk
+          key: emsdk-${{ hashFiles('cmake/Emscripten.cmake') }}
+
+      - name: Configure
+        run: cmake --preset emscripten
+
+      - name: Build the website
+        run: cmake --build --preset emscripten-release --target website
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: bin/web/Release/website
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
