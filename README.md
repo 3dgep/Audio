@@ -43,7 +43,7 @@ There is no audio device to set up or shut down. The library does that for you.
 * 3D (spatial) audio with up to 4 listeners.
 * Generated waveforms (sine, square, triangle and sawtooth) for retro sound effects. See [MarioCoin.cpp](examples/getting_started/MarioCoin.cpp).
 * One `Audio.lib` for both the **Debug** and **Release** builds of your game.
-* Works on Windows and Linux.
+* Works on Windows, Linux and the web ([Emscripten](#cmake-for-the-web-emscripten)). Try the [demo game](https://www.3dgep.com/Audio/) in your browser.
 
 Your project must use C++17 or newer.
 
