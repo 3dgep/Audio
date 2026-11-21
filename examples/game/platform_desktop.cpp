@@ -47,6 +47,11 @@ int  mousePositionX = 0, mousePositionY = 0;
 int  previousMouseX = 0, previousMouseY = 0;
 bool mouseDown = false, mouseWasDown = false;
 
+// Set when the window loses focus (Windows only), and reported for one frame.
+bool focusLost = false, focusLostThisFrame = false;
+
+bool cursorVisible = true;
+
 // fenster's key codes: mostly ASCII (upper case letters), the arrows are 17-20.
 constexpr int KeyRight = 19, KeyLeft = 20;
 constexpr int KeyEnter = 10, KeyEscape = 27, KeySpace = 32;
@@ -110,6 +115,20 @@ LRESULT CALLBACK windowProc( HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
         return 0;
     }
 
+    case WM_ACTIVATE:
+        if ( LOWORD( wParam ) == WA_INACTIVE )
+            focusLost = true;
+        break;  // fenster handles the rest.
+
+    case WM_SETCURSOR:
+        // Inside the window: show the arrow, or no cursor at all (setCursorVisible).
+        if ( LOWORD( lParam ) == HTCLIENT )
+        {
+            SetCursor( cursorVisible ? LoadCursor( nullptr, IDC_ARROW ) : nullptr );
+            return TRUE;
+        }
+        break;
+
     case WM_DPICHANGED:
     {
         // The window moved to a screen with a different scale: use the size Windows suggests.
@@ -142,6 +161,40 @@ void windowToGame( int& x, int& y )
     {
         x = ( x - game.left ) * Width / ( game.right - game.left );
         y = ( y - game.top ) * Height / ( game.bottom - game.top );
+    }
+}
+
+// Fullscreen: a window without a border that covers the whole screen. The game
+// scales to fit (see WM_PAINT). The window's old size and position are restored
+// when leaving fullscreen.
+bool            fullscreen = false;
+WINDOWPLACEMENT windowedPlacement { sizeof( WINDOWPLACEMENT ) };
+
+void setFullscreen( bool enable )
+{
+    HWND       hwnd    = window.hwnd;
+    const LONG style   = GetWindowLong( hwnd, GWL_STYLE );
+    const LONG exStyle = GetWindowLong( hwnd, GWL_EXSTYLE );
+
+    if ( enable && !fullscreen )
+    {
+        MONITORINFO monitor { sizeof( MONITORINFO ) };
+        if ( !GetWindowPlacement( hwnd, &windowedPlacement ) || !GetMonitorInfo( MonitorFromWindow( hwnd, MONITOR_DEFAULTTONEAREST ), &monitor ) )
+            return;
+
+        const RECT& screen = monitor.rcMonitor;
+        SetWindowLong( hwnd, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW );
+        SetWindowLong( hwnd, GWL_EXSTYLE, exStyle & ~WS_EX_CLIENTEDGE );
+        SetWindowPos( hwnd, HWND_TOP, screen.left, screen.top, screen.right - screen.left, screen.bottom - screen.top, SWP_NOOWNERZORDER | SWP_FRAMECHANGED );
+        fullscreen = true;
+    }
+    else if ( !enable && fullscreen )
+    {
+        SetWindowLong( hwnd, GWL_STYLE, style | WS_OVERLAPPEDWINDOW );
+        SetWindowLong( hwnd, GWL_EXSTYLE, exStyle | WS_EX_CLIENTEDGE );
+        SetWindowPlacement( hwnd, &windowedPlacement );
+        SetWindowPos( hwnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED );
+        fullscreen = false;
     }
 }
 
@@ -180,7 +233,11 @@ void readInput()
     keyDown[static_cast<int>( Key::Right )] = keys[KeyRight] || keys['D'];
     keyDown[static_cast<int>( Key::Space )] = keys[KeySpace] || keys[KeyEnter];
     keyDown[static_cast<int>( Key::Pause )] = keys['P'] || keys[KeyEscape];
+    keyDown[static_cast<int>( Key::Fullscreen )] = keys['F'];
     mouseDown                               = window.mouse != 0;
+
+    focusLostThisFrame = focusLost;
+    focusLost          = false;
 }
 
 }  // namespace
@@ -264,9 +321,54 @@ bool hasMouseMoved()
     return mousePositionX != previousMouseX || mousePositionY != previousMouseY;
 }
 
+bool isUsingTouch()
+{
+    return false;  // fenster only has mouse input.
+}
+
+bool wasFocusLost()
+{
+    return focusLostThisFrame;
+}
+
 bool wasMouseClicked()
 {
     return mouseDown && !mouseWasDown;
 }
+
+void setCursorVisible( bool visible )
+{
+    cursorVisible = visible;  // Used on Windows (WM_SETCURSOR).
+}
+
+#if defined( _WIN32 )
+bool canToggleFullscreen()
+{
+    return true;
+}
+
+bool isFullscreen()
+{
+    return fullscreen;
+}
+
+void toggleFullscreen()
+{
+    setFullscreen( !fullscreen );
+}
+#else
+// On Linux and macOS, fenster can't scale the game to fill the screen.
+bool canToggleFullscreen()
+{
+    return false;
+}
+
+bool isFullscreen()
+{
+    return false;
+}
+
+void toggleFullscreen() {}
+#endif
 
 }  // namespace Platform

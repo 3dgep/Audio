@@ -186,6 +186,10 @@ struct Rect
     {
         return x + width / 2.0f;
     }
+    bool contains( int px, int py ) const
+    {
+        return px >= x && px < x + width && py >= y && py < y + height;
+    }
 };
 
 struct Brick
@@ -218,6 +222,78 @@ int                level      = 0;
 int                combo      = 0;  // Bricks hit since the ball last touched the paddle.
 float              stateTime  = 0.0f;
 float              totalTime  = 0.0f;
+
+// The buttons in the top-right corner of the score bar: fullscreen (where it's
+// possible) and pause (while playing). They are larger than their icons, so
+// they're easy to tap.
+constexpr float ButtonSize = 44.0f;
+
+bool hasFullscreenButton()
+{
+    return Platform::canToggleFullscreen();
+}
+
+bool hasPauseButton()
+{
+    return state == State::Playing || state == State::Paused;
+}
+
+Rect fullscreenButton()
+{
+    return { Width - ButtonSize, 0.0f, ButtonSize, Top - 2.0f };
+}
+
+Rect pauseButton()
+{
+    const float right = hasFullscreenButton() ? Width - ButtonSize : Width;
+    return { right - ButtonSize, 0.0f, ButtonSize, Top - 2.0f };
+}
+
+bool isMouseOver( const Rect& button )
+{
+    return button.contains( Platform::mouseX(), Platform::mouseY() );
+}
+
+// Two bars while playing, or a triangle ("play") while paused.
+void drawPauseIcon( int x, int y, bool paused, uint32_t color )
+{
+    if ( paused )
+    {
+        for ( int row = 0; row < 20; ++row )
+            fillRect( x + 3, y + row, std::min( row, 19 - row ) * 3 / 2 + 1, 1, color );
+    }
+    else
+    {
+        fillRect( x + 3, y, 5, 20, color );
+        fillRect( x + 12, y, 5, 20, color );
+    }
+}
+
+// Four corners: pointing out to go fullscreen, pointing in to leave it.
+void drawFullscreenIcon( int x, int y, bool leave, uint32_t color )
+{
+    constexpr int size = 20, arm = 7, line = 3;
+    for ( int corner = 0; corner < 4; ++corner )
+    {
+        const bool right  = corner & 1;
+        const bool bottom = corner & 2;
+        // The point of the corner, and the direction its arms go.
+        int cx = x + ( right ? size - line : 0 );
+        int cy = y + ( bottom ? size - line : 0 );
+        int dx = right ? -1 : 1;
+        int dy = bottom ? -1 : 1;
+        if ( leave )
+        {
+            // Move the point towards the center, and flip the arms.
+            cx += dx * ( arm - line );
+            cy += dy * ( arm - line );
+            dx = -dx;
+            dy = -dy;
+        }
+        fillRect( dx > 0 ? cx : cx - arm + line, cy, arm, line, color );  // Horizontal arm.
+        fillRect( cx, dy > 0 ? cy : cy - arm + line, line, arm, color );  // Vertical arm.
+    }
+}
 
 void setState( State newState )
 {
@@ -352,9 +428,24 @@ void update( float deltaTime )
     totalTime += deltaTime;
     jingle.update( deltaTime );
 
-    const bool action = Platform::wasKeyPressed( Key::Space ) || Platform::wasMouseClicked();
+    // The buttons in the score bar. A click on a button doesn't count as an action.
+    const bool clicked           = Platform::wasMouseClicked();
+    const bool clickedFullscreen = clicked && hasFullscreenButton() && isMouseOver( fullscreenButton() );
+    const bool clickedPause      = clicked && hasPauseButton() && isMouseOver( pauseButton() );
+    const bool action            = Platform::wasKeyPressed( Key::Space ) || ( clicked && !clickedFullscreen && !clickedPause );
 
-    if ( Platform::wasKeyPressed( Key::Pause ) && ( state == State::Playing || state == State::Paused ) )
+    if ( hasFullscreenButton() && ( clickedFullscreen || Platform::wasKeyPressed( Key::Fullscreen ) ) )
+        Platform::toggleFullscreen();
+
+    // Hide the mouse cursor over the playing field while playing; the paddle shows where it is.
+    const bool playing = state == State::Serve || state == State::Playing;
+    Platform::setCursorVisible( !playing || Platform::mouseY() < Top );
+
+    if ( ( Platform::wasKeyPressed( Key::Pause ) || clickedPause ) && ( state == State::Playing || state == State::Paused ) )
+        togglePause();
+
+    // Pause when the player switches to another window or browser tab.
+    if ( Platform::wasFocusLost() && state == State::Playing )
         togglePause();
 
     // Move the paddle, unless the game is paused.
@@ -440,13 +531,27 @@ void draw()
 {
     clear( BackgroundColor );
 
-    // Score bar.
+    // The buttons in the score bar. They light up under the mouse.
+    const bool mouse = !Platform::isUsingTouch();
+    if ( hasFullscreenButton() )
+    {
+        const Rect button = fullscreenButton();
+        drawFullscreenIcon( static_cast<int>( button.x ) + 12, 9, Platform::isFullscreen(), mouse && isMouseOver( button ) ? 0xFFFFFF : 0xA0A8C0 );
+    }
+    if ( hasPauseButton() )
+    {
+        const Rect button = pauseButton();
+        drawPauseIcon( static_cast<int>( button.x ) + 12, 9, state == State::Paused, mouse && isMouseOver( button ) ? 0xFFFFFF : 0xA0A8C0 );
+    }
+
+    // Score bar. LIVES stays left of the pause button's place, also when the button
+    // isn't shown, so it doesn't jump around.
     if ( state != State::Title )
     {
         drawText( "SCORE " + std::to_string( score ), 12, 12, 2, 0xFFFFFF );
         drawTextCentered( "LEVEL " + std::to_string( level ), 12, 2, 0xFFFFFF );
         const std::string livesText = "LIVES " + std::to_string( lives );
-        drawText( livesText, Width - 12 - textWidth( livesText, 2 ), 12, 2, 0xFFFFFF );
+        drawText( livesText, static_cast<int>( pauseButton().x ) - 8 - textWidth( livesText, 2 ), 12, 2, 0xFFFFFF );
     }
     fillRect( 0, Top - 2, Width, 2, 0x303850 );
 
@@ -469,21 +574,34 @@ void draw()
 
     const bool blink = std::fmod( totalTime, 1.0f ) < 0.6f;
 
+    // On a touch screen, you tap instead of click.
+    const bool        touch = Platform::isUsingTouch();
+    const std::string click = touch ? "TAP" : "CLICK";
+
     switch ( state )
     {
     case State::Title:
         drawTextCentered( "BRICK BOUNCE", 230, 6, 0xFFFFFF );
         if ( blink )
-            drawTextCentered( "CLICK TO PLAY", 310, 3, 0xFFE050 );
-        drawTextCentered( "MOVE: MOUSE OR ARROW KEYS", 380, 2, 0xA0A8C0 );
-        drawTextCentered( "LAUNCH: CLICK OR SPACE    PAUSE: P", 410, 2, 0xA0A8C0 );
+            drawTextCentered( click + " TO PLAY", 310, 3, 0xFFE050 );
+        if ( touch )
+        {
+            drawTextCentered( "MOVE: DRAG YOUR FINGER", 380, 2, 0xA0A8C0 );
+            drawTextCentered( "LAUNCH: TAP", 410, 2, 0xA0A8C0 );
+        }
+        else
+        {
+            drawTextCentered( "MOVE: MOUSE OR ARROW KEYS", 380, 2, 0xA0A8C0 );
+            drawTextCentered( "LAUNCH: CLICK OR SPACE    PAUSE: P", 410, 2, 0xA0A8C0 );
+        }
         break;
     case State::Serve:
         if ( blink )
-            drawTextCentered( "CLICK TO LAUNCH", 300, 3, 0xFFE050 );
+            drawTextCentered( click + " TO LAUNCH", 300, 3, 0xFFE050 );
         break;
     case State::Paused:
         drawTextCentered( "PAUSED", 280, 5, 0xFFFFFF );
+        drawTextCentered( click + " TO CONTINUE", 340, 3, 0xA0A8C0 );
         break;
     case State::LevelClear:
         drawTextCentered( "LEVEL CLEAR!", 280, 5, 0xFFE050 );
@@ -491,7 +609,7 @@ void draw()
     case State::GameOver:
         drawTextCentered( "GAME OVER", 260, 6, 0xFF5050 );
         if ( stateTime > 1.0f && blink )
-            drawTextCentered( "CLICK TO PLAY AGAIN", 340, 3, 0xFFE050 );
+            drawTextCentered( click + " TO PLAY AGAIN", 340, 3, 0xFFE050 );
         break;
     default:
         break;

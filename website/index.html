@@ -63,13 +63,17 @@ int main()
         <!-- The game -->
         <section id="play" class="section wrap">
             <h2>Play the demo</h2>
-            <p class="lead"><strong>Brick Bounce</strong> is one of the library's examples. Its music, sound effects and jingles all use the Audio library, compiled to WebAssembly. The same code runs on Windows, Linux and macOS.</p>
+            <p class="lead"><strong>Brick Bounce</strong> is a minimal game that uses the Audio library. Every sound you hear in it is played by the Audio library. It's the same C++ code as the desktop version, compiled to WebAssembly so it runs in your browser. On the desktop, the game window is made with <a href="https://github.com/zserge/fenster">fenster</a>, a tiny single-header library by Serge Zaitsev.</p>
 
             <div class="game">
-                <iframe src="game/game.html" title="Brick Bounce, a game made with the Audio library" loading="lazy" allow="autoplay"></iframe>
+                <iframe id="game-frame" src="game/game.html" title="Brick Bounce, a game made with the Audio library" loading="lazy" allow="autoplay; fullscreen" allowfullscreen></iframe>
             </div>
-            <p class="game-help">Click the game to start. Browsers only play sound after you click the page.<br>
-                Move: mouse or arrow keys &middot; Launch: click or space &middot; Pause: P</p>
+            <div class="game-bar">
+                <p class="game-help">Click the game to start. Browsers only play sound after you click or tap the page.<br>
+                    Move: mouse or arrow keys &middot; Launch: click or space &middot; Pause: P<br>
+                    On a phone or tablet: drag your finger to move, tap to launch.<br>
+                    The buttons in the top-right corner of the game pause it and switch to fullscreen (or press F).</p>
+            </div>
 
             <div class="cards cards-3">
                 <div class="card">

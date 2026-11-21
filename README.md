@@ -323,7 +323,7 @@ python -m http.server --directory bin/web/Release
 
 and open <http://localhost:8000/game.html>. Opening `game.html` directly from disk doesn't work, because browsers don't let a page load files that way.
 
-> **Note**: Browsers only play sound after the user clicks or presses a key on the page. The library starts the sound automatically after that first click or key press.
+> **Note**: Browsers only play sound after the user clicks or taps the page. The library starts the sound automatically after that first click or tap. A key press is not enough, so ask the player to click (for example, "Click to play").
 
 ### Build Output
 

@@ -20,7 +20,11 @@
             width: min(100vw, calc(100vh * 4 / 3));
             aspect-ratio: 4 / 3;
             image-rendering: pixelated;
-            cursor: none;
+            /* Dragging a finger on the game moves the paddle: don't scroll, zoom or select. */
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
         }
     </style>
 </head>

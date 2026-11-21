@@ -23,9 +23,20 @@ int  mousePositionX = 0;
 int  mousePositionY = 0;
 bool mouseMoved     = false;
 bool mouseClicked   = false;
+bool usingTouch     = false;
+bool focusLost      = false;
+
+// Where the current touch started, to tell a tap from a drag.
+int touchStartX = 0;
+int touchStartY = 0;
+
+// clang-format off
+// Does the device have a touch screen as its main pointer (a phone or a tablet)?
+EM_JS( bool, hasTouchScreen, (), {
+    return window.matchMedia( '(pointer: coarse)' ).matches;
+} );
 
 // Copy the pixels to the canvas.
-// clang-format off
 EM_JS( void, presentCanvas, ( const uint32_t* pixels, int width, int height ), {
     if ( !Module.canvasContext ) {
         Module.canvasContext = Module.canvas.getContext( '2d' );
@@ -33,6 +44,32 @@ EM_JS( void, presentCanvas, ( const uint32_t* pixels, int width, int height ), {
     }
     Module.canvasImage.data.set( HEAPU8.subarray( pixels, pixels + width * height * 4 ) );
     Module.canvasContext.putImageData( Module.canvasImage, 0, 0 );
+} );
+
+EM_JS( void, setCanvasCursor, ( bool visible ), {
+    Module.canvas.style.cursor = visible ? 'default' : 'none';
+} );
+
+// Fullscreen for the whole page (the canvas scales to fit). In an <iframe>, this
+// only works if the iframe has allow="fullscreen". Safari on iPhone can't do it.
+EM_JS( bool, canFullscreen, (), {
+    return !!( document.fullscreenEnabled || document.webkitFullscreenEnabled );
+} );
+
+EM_JS( bool, inFullscreen, (), {
+    return !!( document.fullscreenElement || document.webkitFullscreenElement );
+} );
+
+EM_JS( void, toggleFullscreenJS, (), {
+    if ( document.fullscreenElement || document.webkitFullscreenElement ) {
+        ( document.exitFullscreen || document.webkitExitFullscreen ).call( document );
+    } else {
+        const page    = document.documentElement;
+        const request = page.requestFullscreen || page.webkitRequestFullscreen;
+        const result  = request.call( page );
+        if ( result && result.catch )
+            result.catch( () => {} );  // The browser refused: stay as we are.
+    }
 } );
 // clang-format on
 
@@ -47,6 +84,8 @@ bool toKey( const char* code, Key& key )
         key = Key::Space;
     else if ( !strcmp( code, "KeyP" ) || !strcmp( code, "Escape" ) )
         key = Key::Pause;
+    else if ( !strcmp( code, "KeyF" ) )
+        key = Key::Fullscreen;
     else
         return false;
     return true;
@@ -82,14 +121,60 @@ void setMousePosition( int x, int y )
 bool onMouseMove( int, const EmscriptenMouseEvent* e, void* )
 {
     setMousePosition( e->targetX, e->targetY );
+    usingTouch = false;
     return false;
 }
 
 bool onMouseDown( int, const EmscriptenMouseEvent* e, void* )
 {
     setMousePosition( e->targetX, e->targetY );
+    usingTouch = false;
     if ( e->button == 0 )
         mouseClicked = true;
+    return false;
+}
+
+// Touch works like the mouse: dragging a finger moves the mouse, and a tap (a
+// touch that doesn't move much) is a click.
+bool onTouch( int eventType, const EmscriptenTouchEvent* e, void* )
+{
+    for ( int i = 0; i < e->numTouches; ++i )
+    {
+        const EmscriptenTouchPoint& touch = e->touches[i];
+        if ( !touch.isChanged )
+            continue;
+
+        setMousePosition( touch.targetX, touch.targetY );
+        usingTouch = true;
+
+        if ( eventType == EMSCRIPTEN_EVENT_TOUCHSTART )
+        {
+            touchStartX = mousePositionX;
+            touchStartY = mousePositionY;
+        }
+        else if ( eventType == EMSCRIPTEN_EVENT_TOUCHEND )
+        {
+            const int dx = mousePositionX - touchStartX;
+            const int dy = mousePositionY - touchStartY;
+            if ( dx * dx + dy * dy < 20 * 20 )
+                mouseClicked = true;
+        }
+        break;  // Only the first finger.
+    }
+    // Don't scroll or zoom the page, and don't send mouse events as well.
+    return true;
+}
+
+bool onFocusLost( int, const EmscriptenFocusEvent*, void* )
+{
+    focusLost = true;
+    return false;
+}
+
+bool onVisibilityChange( int, const EmscriptenVisibilityChangeEvent* e, void* )
+{
+    if ( e->hidden )
+        focusLost = true;
     return false;
 }
 
@@ -117,6 +202,7 @@ void mainLoop()
     std::memset( keyPressed, 0, sizeof( keyPressed ) );
     mouseMoved   = false;
     mouseClicked = false;
+    focusLost    = false;
 }
 
 }  // namespace
@@ -132,7 +218,13 @@ void run( const char* title, FrameFunction frame )
     emscripten_set_keyup_callback( EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, true, onKey );
     emscripten_set_mousemove_callback( "#canvas", nullptr, true, onMouseMove );
     emscripten_set_mousedown_callback( "#canvas", nullptr, true, onMouseDown );
+    emscripten_set_touchstart_callback( "#canvas", nullptr, true, onTouch );
+    emscripten_set_touchmove_callback( "#canvas", nullptr, true, onTouch );
+    emscripten_set_touchend_callback( "#canvas", nullptr, true, onTouch );
+    emscripten_set_blur_callback( EMSCRIPTEN_EVENT_TARGET_WINDOW, nullptr, true, onFocusLost );
+    emscripten_set_visibilitychange_callback( nullptr, true, onVisibilityChange );
 
+    usingTouch    = hasTouchScreen();
     frameFunction = frame;
     previousTime  = emscripten_get_now();
 
@@ -173,6 +265,43 @@ bool hasMouseMoved()
 bool wasMouseClicked()
 {
     return mouseClicked;
+}
+
+bool isUsingTouch()
+{
+    return usingTouch;
+}
+
+bool wasFocusLost()
+{
+    return focusLost;
+}
+
+void setCursorVisible( bool visible )
+{
+    static int current = -1;  // Only change the style when it changes.
+    if ( current != static_cast<int>( visible ) )
+    {
+        current = visible;
+        setCanvasCursor( visible );
+    }
+}
+
+bool canToggleFullscreen()
+{
+    return canFullscreen();
+}
+
+bool isFullscreen()
+{
+    return inFullscreen();
+}
+
+void toggleFullscreen()
+{
+    // Browsers only allow this right after a click, tap or key press. The game
+    // calls this in the frame after the click, which is soon enough.
+    toggleFullscreenJS();
 }
 
 }  // namespace Platform

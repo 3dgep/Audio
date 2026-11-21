@@ -20,7 +20,8 @@ enum class Key
     Left,
     Right,
     Space,
-    Pause,  // P or Escape.
+    Pause,       // P or Escape.
+    Fullscreen,  // F.
     Count
 };
 
@@ -46,7 +47,24 @@ int  mouseX();
 int  mouseY();
 bool hasMouseMoved();
 
-// Was the (left) mouse button clicked during the last frame?
+// Was the (left) mouse button clicked during the last frame? On a touch screen,
+// a tap is a click, and dragging a finger moves the mouse.
 bool wasMouseClicked();
+
+// Is the player using a touch screen (instead of a mouse)?
+bool isUsingTouch();
+
+// Did the game lose focus during the last frame (for example, the player switched
+// to another window or browser tab)? A good moment to pause the game.
+bool wasFocusLost();
+
+// Show or hide the mouse cursor while it is over the game.
+void setCursorVisible( bool visible );
+
+// Fullscreen: in the browser and on Windows. canToggleFullscreen() is false where
+// it isn't possible (Linux, macOS, and Safari on iPhone).
+bool canToggleFullscreen();
+bool isFullscreen();
+void toggleFullscreen();
 
 }  // namespace Platform
