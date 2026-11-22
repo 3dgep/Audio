@@ -2,7 +2,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO 3dgep/Audio
     REF "v${VERSION}"
-    SHA512 56051f948ed4d2fbe806709cfa252d31604b0c2ee43c9c4d07fa8fb4814ac9b1c0aec349c0d25536ef47c555611cd37e17111f543bdcb20d98d30cb58ea46a06
+    SHA512 0 # Replace with the SHA512 of the v2.0.1 source archive once the tag exists.
     HEAD_REF main
 )
 

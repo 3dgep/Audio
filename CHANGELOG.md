@@ -4,6 +4,17 @@ All notable changes to the Audio library are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2026-11-22
+
+### Added
+
+- Documentation for all public functions, types and constants in `<Audio/audio.h>` and the C++ headers: defaults, units, and what happens with empty objects and out-of-range values.
+- The game example has touch controls in the browser (drag to move, tap to start and launch), and a pause and a fullscreen button in its score bar (fullscreen also with F, in the browser and on Windows). It pauses when it loses focus.
+
+### Fixed
+
+- The README said that a key press starts the sound in a browser. Browsers only allow it after a click or tap.
+
 ## [2.0.0] - 2026-11-21
 
 Version 2 moves the library behind a stable C API. A compiled `Audio.lib` or `Audio.dll` no longer depends on a particular version of the C++ standard library, and the same library can be linked into both Debug and Release builds. The C++ API is now a thin, header-only wrapper around the C API and works the same way as in v1: there is still no need to manage the audio device, and copying a sound still shares it.
@@ -145,6 +156,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - Visual Studio 2022 solution and CMake build.
 - Example application with narration and a waveform coin sound effect.
 
+[2.0.1]: https://github.com/3dgep/Audio/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/3dgep/Audio/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/3dgep/Audio/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/3dgep/Audio/compare/v1.0.1...v1.0.2

@@ -86,7 +86,7 @@ extern "C" {
 
 #define AUDIO_VERSION_MAJOR 2
 #define AUDIO_VERSION_MINOR 0
-#define AUDIO_VERSION_PATCH 0
+#define AUDIO_VERSION_PATCH 1
 
 /* Pack a version into a uint32_t (10 bits major, 10 bits minor, 12 bits patch), and
  * get the parts back out. Packed versions can be compared with <, == and >. */
