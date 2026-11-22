@@ -30,14 +30,17 @@ namespace Audio
 class Sound
 {
 public:
+    /// How the sound is loaded and played.
     enum class Type
     {
-        Sound,               ///< A short sound effect, fully decoded on load.
-        Music,               ///< A longer sound like background music, streamed while playing.
+        Sound,               ///< A short sound effect, fully decoded on load. Can be placed in 3D.
+        Music,               ///< A longer sound like background music, streamed while playing. Not spatialized.
         Background = Music,  ///< An alias for Music.
         Stream     = Music,  ///< An alias for Music.
     };
 
+    /// How a spatialized sound gets quieter with distance from the listener.
+    ///
     /// Note: `Off` is deliberately not named `None`, since X11's `X.h` defines
     /// `None` as a macro.
     enum class AttenuationModel : int32_t
@@ -51,7 +54,9 @@ public:
     /// An empty sound.
     Sound() noexcept = default;
 
-    /// Load a sound on the default device.
+    /// Load a sound on the default device. The path is relative to the working
+    /// directory (or absolute). If loading fails, the error is printed and the sound is
+    /// empty: check with `if ( sound )`, or use `load` to get the `Result`.
     explicit Sound( const std::filesystem::path& filePath, Type type = Type::Sound )
     {
         load( filePath, type );
@@ -93,7 +98,8 @@ public:
         return impl != nullptr;
     }
 
-    /// Start playing (or resume) the sound.
+    /// Start playing (or resume) the sound. Does nothing if it is already playing.
+    /// A sound that has played to its end starts again from the beginning.
     Result play() noexcept
     {
         return detail::toResult( audio_sound_play( get() ) );
@@ -118,7 +124,7 @@ public:
         return play();
     }
 
-    /// Seek to a position (in milliseconds).
+    /// Seek to a position (in milliseconds from the start), while playing or stopped.
     Result seek( uint64_t milliseconds = 0u ) noexcept
     {
         return detail::toResult( audio_sound_seek( get(), milliseconds ) );
@@ -131,16 +137,19 @@ public:
         return seek( detail::toMilliseconds( position ) );
     }
 
+    /// The length of the sound, in seconds.
     float getDurationInSeconds() const noexcept
     {
         return audio_sound_get_duration_seconds( get() );
     }
 
+    /// The current playback position (the cursor), in seconds from the start.
     float getCursorInSeconds() const noexcept
     {
         return audio_sound_get_cursor_seconds( get() );
     }
 
+    /// `true` while the sound is playing: after `play`, until it is stopped or reaches its end.
     bool isPlaying() const noexcept
     {
         return audio_sound_is_playing( get() ) != AUDIO_FALSE;
@@ -152,50 +161,58 @@ public:
         return audio_sound_is_at_end( get() ) != AUDIO_FALSE;
     }
 
+    /// When looping, the sound starts again from the beginning when it reaches its end,
+    /// until it is stopped. Default: off.
     void setLooping( bool looping ) noexcept
     {
         audio_sound_set_looping( get(), looping ? AUDIO_TRUE : AUDIO_FALSE );
     }
 
+    /// `true` if the sound loops.
     bool isLooping() const noexcept
     {
         return audio_sound_is_looping( get() ) != AUDIO_FALSE;
     }
 
-    /// 0 is silent, 1 is 100%, above 1 amplifies.
+    /// Set the volume. 0 is silent, 1 is 100%, above 1 amplifies. Default: 1.
     void setVolume( float volume ) noexcept
     {
         audio_sound_set_volume( get(), volume );
     }
 
+    /// Get the volume (without a fade, see `setFade`).
     float getVolume() const noexcept
     {
         return audio_sound_get_volume( get() );
     }
 
-    /// -1 is fully left, 0 is centered, 1 is fully right.
+    /// Set the pan. -1 is fully left, 0 is centered, 1 is fully right. Default: 0.
     void setPan( float pan ) noexcept
     {
         audio_sound_set_pan( get(), pan );
     }
 
+    /// Get the pan.
     float getPan() const noexcept
     {
         return audio_sound_get_pan( get() );
     }
 
-    /// Must be greater than 0. 1 is the original pitch; larger is higher.
+    /// Set the pitch. 1 is the original pitch; larger is higher (and faster), smaller is
+    /// lower (and slower). Values of 0 or less are ignored. Default: 1.
     void setPitch( float pitch ) noexcept
     {
         audio_sound_set_pitch( get(), pitch );
     }
 
+    /// Get the pitch.
     float getPitch() const noexcept
     {
         return audio_sound_get_pitch( get() );
     }
 
     /// Fade from the current volume to `endVolume` over a number of milliseconds.
+    /// The fade is applied on top of the volume set with `setVolume`.
     void setFade( float endVolume, uint64_t milliseconds ) noexcept
     {
         audio_sound_set_fade( get(), -1.0f, endVolume, milliseconds );
@@ -227,6 +244,8 @@ public:
         audio_sound_schedule_start( get(), delayMilliseconds );
     }
 
+    /// Start the sound after a delay from now, for example `sound.setStartTime( 2s )`.
+    /// `play` must still be called.
     template<class Rep, class Period>
     void setStartTime( const std::chrono::duration<Rep, Period>& delay ) noexcept
     {
@@ -239,6 +258,7 @@ public:
         audio_sound_schedule_stop( get(), delayMilliseconds );
     }
 
+    /// Stop the sound after a delay from now, for example `sound.setStopTime( 2s )`.
     template<class Rep, class Period>
     void setStopTime( const std::chrono::duration<Rep, Period>& delay ) noexcept
     {
@@ -248,118 +268,152 @@ public:
     // --- Spatialization (ignored for Type::Music) ---
 
     /// By default, sounds are spatialized relative to the closest listener.
-    /// Use this to pin the sound to a specific listener instead.
+    /// Use this to pin the sound to a specific listener instead. Pass an invalid
+    /// listener (`Audio::Listener {}`) to use the closest listener again.
     void setPinnedListener( const Listener& listener ) noexcept
     {
         audio_sound_set_pinned_listener( get(), listener ? listener.getIndex() : AUDIO_LISTENER_CLOSEST );
     }
 
+    /// Set the position of the sound in the world (the same space as the listeners).
+    /// Default: (0, 0, 0).
     void setPosition( const Vector& position ) noexcept
     {
         audio_sound_set_position( get(), detail::toC( position ) );
     }
 
+    /// Get the position of the sound in the world.
     Vector getPosition() const noexcept
     {
         return detail::fromC( audio_sound_get_position( get() ) );
     }
 
+    /// Set the direction the sound is facing. Only matters when a sound cone is set
+    /// (see `setCone`). Default: (0, 0, -1).
     void setDirection( const Vector& direction ) noexcept
     {
         audio_sound_set_direction( get(), detail::toC( direction ) );
     }
 
+    /// Get the direction the sound is facing.
     Vector getDirection() const noexcept
     {
         return detail::fromC( audio_sound_get_direction( get() ) );
     }
 
+    /// Set the velocity of the sound, in world units per second. Only used for the
+    /// doppler effect (see `setDopplerFactor`). Default: (0, 0, 0).
     void setVelocity( const Vector& velocity ) noexcept
     {
         audio_sound_set_velocity( get(), detail::toC( velocity ) );
     }
 
+    /// Get the velocity of the sound.
     Vector getVelocity() const noexcept
     {
         return detail::fromC( audio_sound_get_velocity( get() ) );
     }
 
-    /// Set the sound cone (angles in radians).
+    /// Set the sound cone, around the sound's direction (angles in radians). A listener
+    /// inside the inner cone hears the sound at full volume, a listener outside the
+    /// outer cone hears it attenuated by `outerGain`, and in between it is interpolated.
+    /// Default: inner and outer angles of 2 pi (360 degrees, so no attenuation) and an
+    /// `outerGain` of 0.
     void setCone( float innerAngle, float outerAngle, float outerGain ) noexcept
     {
         audio_sound_set_cone( get(), innerAngle, outerAngle, outerGain );
     }
 
+    /// Get the sound cone (see `setCone`).
     void getCone( float& innerAngle, float& outerAngle, float& outerGain ) const noexcept
     {
         audio_sound_get_cone( get(), &innerAngle, &outerAngle, &outerGain );
     }
 
+    /// Set how the sound gets quieter with distance. Default: `AttenuationModel::Inverse`.
     void setAttenuationModel( AttenuationModel model ) noexcept
     {
         audio_sound_set_attenuation_model( get(), static_cast<audio_attenuation_model>( model ) );
     }
 
+    /// Get how the sound gets quieter with distance.
     AttenuationModel getAttenuationModel() const noexcept
     {
         return static_cast<AttenuationModel>( audio_sound_get_attenuation_model( get() ) );
     }
 
+    /// Set how quickly the sound gets quieter with distance. Higher values fade faster.
+    /// Default: 1.
     void setRollOff( float rollOff ) noexcept
     {
         audio_sound_set_rolloff( get(), rollOff );
     }
 
+    /// Get how quickly the sound gets quieter with distance.
     float getRollOff() const noexcept
     {
         return audio_sound_get_rolloff( get() );
     }
 
+    /// Set the lowest volume (gain) distance and cones can reduce the sound to, so it
+    /// never gets quieter than this. Default: 0.
     void setMinGain( float minGain ) noexcept
     {
         audio_sound_set_min_gain( get(), minGain );
     }
 
+    /// Get the lowest volume (gain) from spatialization.
     float getMinGain() const noexcept
     {
         return audio_sound_get_min_gain( get() );
     }
 
+    /// Set the highest volume (gain) from spatialization. Default: 1.
     void setMaxGain( float maxGain ) noexcept
     {
         audio_sound_set_max_gain( get(), maxGain );
     }
 
+    /// Get the highest volume (gain) from spatialization.
     float getMaxGain() const noexcept
     {
         return audio_sound_get_max_gain( get() );
     }
 
+    /// Set the distance at which the sound starts to get quieter. Closer than this,
+    /// it plays at full volume. Default: 1.
     void setMinDistance( float minDistance ) noexcept
     {
         audio_sound_set_min_distance( get(), minDistance );
     }
 
+    /// Get the distance at which the sound starts to get quieter.
     float getMinDistance() const noexcept
     {
         return audio_sound_get_min_distance( get() );
     }
 
+    /// Set the distance after which the sound doesn't get any quieter.
+    /// Default: the largest float (no limit).
     void setMaxDistance( float maxDistance ) noexcept
     {
         audio_sound_set_max_distance( get(), maxDistance );
     }
 
+    /// Get the distance after which the sound doesn't get any quieter.
     float getMaxDistance() const noexcept
     {
         return audio_sound_get_max_distance( get() );
     }
 
+    /// Set the strength of the doppler effect: the change in pitch when a sound moves
+    /// towards or away from the listener (see `setVelocity`). 0 disables it. Default: 1.
     void setDopplerFactor( float dopplerFactor ) noexcept
     {
         audio_sound_set_doppler_factor( get(), dopplerFactor );
     }
 
+    /// Get the strength of the doppler effect.
     float getDopplerFactor() const noexcept
     {
         return audio_sound_get_doppler_factor( get() );

@@ -24,6 +24,7 @@ namespace Audio
 class Device
 {
 public:
+    /// The settings for a device. The defaults suit most games.
     struct Config
     {
         uint32_t listenerCount = 0;  ///< [1 .. 4]. 0 = the maximum (4).
@@ -73,12 +74,15 @@ public:
         impl.reset();
     }
 
+    /// `true` if a device was created.
     explicit operator bool() const noexcept
     {
         return impl != nullptr;
     }
 
-    /// Play a sound in a "fire and forget" way.
+    /// Play a sound in a "fire and forget" way on this device. Multiple calls may
+    /// overlap. There is no way to stop the sound once it has started.
+    /// Returns `Result::InvalidOperation` if the device is empty.
     Result playSound( const std::filesystem::path& filePath ) const
     {
         if ( !get() )
@@ -86,27 +90,33 @@ public:
         return detail::toResult( audio_play_sound( get(), detail::toUtf8( filePath ).c_str() ) );
     }
 
+    /// Set the volume of all sounds and waveforms on this device.
+    /// 0 is silent, 1 is 100%, above 1 amplifies. Default: 1.
     void setMasterVolume( float volume ) const noexcept
     {
         if ( get() )
             audio_device_set_master_volume( get(), volume );
     }
 
+    /// Get the master volume of this device. Returns 0 if the device is empty.
     float getMasterVolume() const noexcept
     {
         return get() ? audio_device_get_master_volume( get() ) : 0.0f;
     }
 
+    /// The sample rate the device plays at, in Hz (for example 48000). 0 if the device is empty.
     uint32_t getSampleRate() const noexcept
     {
         return get() ? audio_device_get_sample_rate( get() ) : 0u;
     }
 
+    /// The number of output channels (for example 2 for stereo). 0 if the device is empty.
     uint32_t getChannels() const noexcept
     {
         return get() ? audio_device_get_channels( get() ) : 0u;
     }
 
+    /// The number of listeners [1 .. 4]. 0 if the device is empty.
     uint32_t getListenerCount() const noexcept
     {
         return get() ? audio_device_get_listener_count( get() ) : 0u;
@@ -146,12 +156,13 @@ inline void setMasterVolume( float volume ) noexcept
     audio_device_set_master_volume( detail::useDevice( nullptr ), volume );
 }
 
+/// Get the master volume of the default device.
 inline float getMasterVolume() noexcept
 {
     return audio_device_get_master_volume( detail::useDevice( nullptr ) );
 }
 
-/// Get a listener of the default device [0 .. 3].
+/// Get a listener of the default device [0 .. 3]. Most games only use listener 0.
 inline Listener getListener( uint32_t index = 0 ) noexcept
 {
     detail::useDevice( nullptr );

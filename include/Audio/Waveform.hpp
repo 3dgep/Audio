@@ -11,13 +11,18 @@
 namespace Audio
 {
 
-/// A generated waveform (sine, square, triangle or sawtooth).
+/// A generated waveform (sine, square, triangle or sawtooth): a tone that is generated
+/// while it plays, instead of loaded from a file. Good for retro sound effects.
+///
+/// The amplitude is the volume (0 is silent, 1 is full volume) and the frequency is the
+/// pitch in Hz (for example 440 for the note A4). Waveforms are not spatialized.
 ///
 /// `Waveform` is a shared handle: copies refer to the same waveform, which is destroyed
 /// when the last copy is gone. All functions are safe to call on an empty waveform.
 class Waveform
 {
 public:
+    /// The shape of the wave, which changes how the tone sounds.
     enum class Type : int32_t
     {
         Sine     = AUDIO_WAVEFORM_TYPE_SINE,      ///< See: https://en.wikipedia.org/wiki/Sine_wave
@@ -65,52 +70,62 @@ public:
         impl.reset();
     }
 
+    /// `true` if a waveform was created.
     explicit operator bool() const noexcept
     {
         return impl != nullptr;
     }
 
+    /// Start playing the waveform. Does nothing if it is already playing.
     Result start() noexcept
     {
         return detail::toResult( audio_waveform_start( get() ) );
     }
 
+    /// Stop playing the waveform.
     Result stop() noexcept
     {
         return detail::toResult( audio_waveform_stop( get() ) );
     }
 
+    /// `true` after `start`, until `stop`.
     bool isPlaying() const noexcept
     {
         return audio_waveform_is_playing( get() ) != AUDIO_FALSE;
     }
 
+    /// Change the shape of the wave, also while it plays.
     void setType( Type type ) noexcept
     {
         audio_waveform_set_type( get(), static_cast<audio_waveform_type>( type ) );
     }
 
+    /// Get the shape of the wave.
     Type getType() const noexcept
     {
         return static_cast<Type>( audio_waveform_get_type( get() ) );
     }
 
+    /// Set the amplitude (volume). 0 is silent, 1 is full volume.
     void setAmplitude( float amplitude ) noexcept
     {
         audio_waveform_set_amplitude( get(), amplitude );
     }
 
+    /// Get the amplitude (volume).
     float getAmplitude() const noexcept
     {
         return audio_waveform_get_amplitude( get() );
     }
 
-    /// Frequency in Hz.
+    /// Set the frequency (pitch) in Hz, also while it plays. Doubling the frequency
+    /// makes the tone one octave higher.
     void setFrequency( float frequency ) noexcept
     {
         audio_waveform_set_frequency( get(), frequency );
     }
 
+    /// Get the frequency (pitch) in Hz.
     float getFrequency() const noexcept
     {
         return audio_waveform_get_frequency( get() );
