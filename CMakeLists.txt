@@ -6,7 +6,13 @@ set( AUDIO_VERSION_PATCH 1 )
 set( AUDIO_VERSION "${AUDIO_VERSION_MAJOR}.${AUDIO_VERSION_MINOR}.${AUDIO_VERSION_PATCH}" )
 
 option( AUDIO_BUILD_EXAMPLES "Include the example projects." OFF )
-option( AUDIO_INSTALL_CONFIG_SUBDIRS "Install libraries into per-configuration subdirectories." ON )
+# Per-configuration subdirectories let Debug and Release be installed side by side,
+# which only multi-config generators (such as Visual Studio) can build into one folder.
+get_property( AUDIO_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG )
+if( NOT AUDIO_MULTI_CONFIG )
+    set( AUDIO_MULTI_CONFIG OFF )
+endif()
+option( AUDIO_INSTALL_CONFIG_SUBDIRS "Install libraries into per-configuration subdirectories (lib/Debug, lib/Release). Default: ON for multi-config generators such as Visual Studio." ${AUDIO_MULTI_CONFIG} )
 option( BUILD_SHARED_LIBS "Build Audio library as a shared library (DLL)." OFF )
 option( AUDIO_USE_SYSTEM_DEPS "Use installed miniaudio and stb_vorbis instead of the copies in src/." OFF )
 option( AUDIO_MSVC_ANY_CRT "MSVC static library: build with /MT /Zl so it links with any C runtime (/MD, /MDd, /MT, /MTd). Turn off to use CMAKE_MSVC_RUNTIME_LIBRARY." ON )
@@ -14,7 +20,9 @@ option( AUDIO_MSVC_ANY_CRT "MSVC static library: build with /MT /Zl so it links 
 option( AUDIO_BUILD_WEB "Build for the web (WebAssembly) with Emscripten. Downloads the Emscripten SDK if it is not installed." OFF )
 
 # The web build needs the Emscripten toolchain, which must be set before project().
-include( cmake/Emscripten.cmake )
+if( AUDIO_BUILD_WEB )
+    include( cmake/Emscripten.cmake )
+endif()
 
 # Use solution folders in Visual Studio.
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)

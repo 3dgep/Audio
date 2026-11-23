@@ -16,10 +16,6 @@
 #
 # On Windows, Ninja is used from the PATH or else from Visual Studio.
 
-if( NOT AUDIO_BUILD_WEB )
-    return()
-endif()
-
 set( AUDIO_EMSDK_VERSION "7.0.0" CACHE STRING "Version of the Emscripten SDK to download if none is installed." )
 set( AUDIO_EMSDK_DIR "${CMAKE_CURRENT_LIST_DIR}/../out/emsdk" CACHE PATH "Folder to download the Emscripten SDK to if none is installed." )
 

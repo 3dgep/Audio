@@ -4,6 +4,12 @@ All notable changes to the Audio library are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- `AUDIO_INSTALL_CONFIG_SUBDIRS` is now only ON by default for multi-config generators (Visual Studio, Ninja Multi-Config, Xcode), which can build Debug and Release into one install folder. With a single-config generator (Make, Ninja), the library installs to the standard `lib/` and `bin/` folders, so the linker and the dynamic loader find it after `cmake --install`. Set the option to keep the old layout.
+
 ## [2.1.1] - 2026-11-23
 
 ### Fixed
@@ -178,6 +184,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - Visual Studio 2022 solution and CMake build.
 - Example application with narration and a waveform coin sound effect.
 
+[Unreleased]: https://github.com/3dgep/Audio/compare/v2.1.1...main
 [2.1.1]: https://github.com/3dgep/Audio/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/3dgep/Audio/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/3dgep/Audio/compare/v2.0.0...v2.0.1
