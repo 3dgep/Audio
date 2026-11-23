@@ -1,8 +1,8 @@
 cmake_minimum_required( VERSION 3.22.1 )
 
 set( AUDIO_VERSION_MAJOR 2 )
-set( AUDIO_VERSION_MINOR 0 )
-set( AUDIO_VERSION_PATCH 1 )
+set( AUDIO_VERSION_MINOR 1 )
+set( AUDIO_VERSION_PATCH 0 )
 set( AUDIO_VERSION "${AUDIO_VERSION_MAJOR}.${AUDIO_VERSION_MINOR}.${AUDIO_VERSION_PATCH}" )
 
 option( AUDIO_BUILD_EXAMPLES "Include the example projects." OFF )
@@ -48,6 +48,7 @@ set( INC_FILES
     include/Audio/Audio.hpp
     include/Audio/Config.hpp
     include/Audio/Device.hpp
+    include/Audio/Group.hpp
     include/Audio/Listener.hpp
     include/Audio/Sound.hpp
     include/Audio/Vector.hpp
@@ -59,6 +60,7 @@ set( INC_FILES
 set( AUDIO_SRC_FILES
     src/audio_internal.h
     src/audio_device.c
+    src/audio_group.c
     src/audio_sound.c
     src/audio_waveform.c
 )

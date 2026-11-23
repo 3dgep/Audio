@@ -1,4 +1,4 @@
-// Demonstrates Sound::setFade.
+// Demonstrates Sound::setFade, and Sound::stop with a fade-out.
 //
 // The two-argument setFade( endVolume, duration ) starts the ramp from the
 // sound's *current* fade gain. That gain defaults to 1.0, so a sound that has
@@ -31,6 +31,8 @@ enum class State
     ThreeArgFadeUp,    // Three-arg, 0.0 -> 1.0. The case two-arg cannot do.
     ThreeArgPartial,   // Three-arg with an arbitrary range.
     ChronoOverload,    // Three-arg taking a std::chrono::duration.
+    StopWithFade,      // stop( fade ): fade out, then stop.
+    PlayAgain,         // play() after stop( fade ): the volume is back.
     FadeOut,
     Done
 };
@@ -129,15 +131,39 @@ int main( int argc, char* argv[] )
             if ( totalTime > 3.0 )
             {
                 totalTime = 0.0;
+                state     = State::StopWithFade;
+
+                music.stop( 1500 );
+                std::cout << "\n6. stop( 1500 )\n"
+                          << "   Expect a fade out over 1.5 seconds, and then the music stops." << std::endl;
+            }
+            break;
+        case State::StopWithFade:
+            if ( totalTime > 2.5 )
+            {
+                totalTime = 0.0;
+                state     = State::PlayAgain;
+
+                std::cout << "   isPlaying() after the fade-out: " << std::boolalpha << music.isPlaying() << std::endl;
+
+                music.play();
+                std::cout << "\n7. play()\n"
+                          << "   Expect the music to continue where it stopped, at full gain again." << std::endl;
+            }
+            break;
+        case State::PlayAgain:
+            if ( totalTime > 3.0 )
+            {
+                totalTime = 0.0;
                 state     = State::FadeOut;
 
-                music.setFade( 1.0f, 0.0f, 1500 );
-                std::cout << "\n6. setFade( 1.0f, 0.0f, 1500 )\n"
-                          << "   Fading out." << std::endl;
+                music.stop( seconds( 2 ) );
+                std::cout << "\n8. stop( seconds( 2 ) )\n"
+                          << "   Fading out, then stop." << std::endl;
             }
             break;
         case State::FadeOut:
-            if ( totalTime > 2.0 )
+            if ( totalTime > 2.5 )
             {
                 state = State::Done;
             }

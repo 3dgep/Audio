@@ -80,6 +80,10 @@ bool toKey( const char* code, Key& key )
         key = Key::Left;
     else if ( !strcmp( code, "ArrowRight" ) || !strcmp( code, "KeyD" ) )
         key = Key::Right;
+    else if ( !strcmp( code, "ArrowUp" ) || !strcmp( code, "KeyW" ) )
+        key = Key::Up;
+    else if ( !strcmp( code, "ArrowDown" ) || !strcmp( code, "KeyS" ) )
+        key = Key::Down;
     else if ( !strcmp( code, "Space" ) || !strcmp( code, "Enter" ) )
         key = Key::Space;
     else if ( !strcmp( code, "KeyP" ) || !strcmp( code, "Escape" ) )

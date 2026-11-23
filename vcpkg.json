@@ -1,6 +1,6 @@
 {
     "name": "audio",
-    "version": "2.0.1",
+    "version": "2.1.0",
     "description": "A minimalistic audio library for games with a C API and a header-only C++ wrapper, built on miniaudio.",
     "homepage": "https://github.com/3dgep/Audio",
     "license": "Unlicense"

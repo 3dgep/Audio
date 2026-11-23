@@ -19,7 +19,7 @@ static audio_vec3 audio__vec3( ma_vec3f v )
 
 static const audio_vec3 audio__zero = { 0.0f, 0.0f, 0.0f };
 
-audio_result AUDIO_CALL audio_sound_create( audio_device* device, const char* file_path, audio_sound_flags flags, audio_sound** out_sound )
+static audio_result audio__sound_create( audio_device* device, audio_group* group, const char* file_path, audio_sound_flags flags, audio_sound** out_sound )
 {
     audio_sound* sound;
     ma_uint32    ma_flags = 0;
@@ -50,15 +50,15 @@ audio_result AUDIO_CALL audio_sound_create( audio_device* device, const char* fi
     if ( !sound )
         return AUDIO_OUT_OF_MEMORY;
 
-    /* The sound keeps this reference until it is destroyed. */
-    sound->device = audio__acquire_device( device );
+    /* The sound keeps these references until it is destroyed. */
+    sound->device = audio__acquire_device( group ? group->device : device );
     if ( !sound->device )
     {
         free( sound );
         return AUDIO_DEVICE_ERROR;
     }
 
-    result = ma_sound_init_from_file( &sound->device->engine, file_path, ma_flags, NULL, NULL, &sound->sound );
+    result = ma_sound_init_from_file( &sound->device->engine, file_path, ma_flags, group ? &group->group : NULL, NULL, &sound->sound );
     if ( result != MA_SUCCESS )
     {
         audio__log( AUDIO_LOG_LEVEL_ERROR, "Failed to load sound '%s': %s", file_path, ma_result_description( result ) );
@@ -67,8 +67,21 @@ audio_result AUDIO_CALL audio_sound_create( audio_device* device, const char* fi
         return audio__result( result );
     }
 
+    audio__retain_group( group );
+    sound->group = group;
+
     *out_sound = sound;
     return AUDIO_SUCCESS;
+}
+
+audio_result AUDIO_CALL audio_sound_create( audio_device* device, const char* file_path, audio_sound_flags flags, audio_sound** out_sound )
+{
+    return audio__sound_create( device, NULL, file_path, flags, out_sound );
+}
+
+audio_result AUDIO_CALL audio_sound_create_in_group( audio_group* group, const char* file_path, audio_sound_flags flags, audio_sound** out_sound )
+{
+    return audio__sound_create( NULL, group, file_path, flags, out_sound );
 }
 
 void AUDIO_CALL audio_sound_destroy( audio_sound* sound )
@@ -77,6 +90,7 @@ void AUDIO_CALL audio_sound_destroy( audio_sound* sound )
         return;
 
     ma_sound_uninit( &sound->sound );
+    audio__release_group( sound->group );
     audio__release_device( sound->device );
     free( sound );
 }
@@ -90,7 +104,7 @@ audio_result AUDIO_CALL audio_sound_play( audio_sound* sound )
     if ( !sound )
         return AUDIO_INVALID_ARGS;
 
-    return audio__result( ma_sound_start( &sound->sound ) );
+    return audio__result( audio__ma_sound_play( &sound->sound, &sound->fade_out ) );
 }
 
 audio_result AUDIO_CALL audio_sound_stop( audio_sound* sound )
@@ -99,6 +113,100 @@ audio_result AUDIO_CALL audio_sound_stop( audio_sound* sound )
         return AUDIO_INVALID_ARGS;
 
     return audio__result( ma_sound_stop( &sound->sound ) );
+}
+
+audio_result AUDIO_CALL audio_sound_stop_with_fade( audio_sound* sound, uint64_t milliseconds )
+{
+    if ( !sound )
+        return AUDIO_INVALID_ARGS;
+
+    return audio__result( audio__ma_sound_stop_with_fade( &sound->sound, &sound->fade_out, milliseconds ) );
+}
+
+audio_result AUDIO_CALL audio_sound_set_group( audio_sound* sound, audio_group* group )
+{
+    if ( !sound )
+        return AUDIO_INVALID_ARGS;
+
+    return audio__move_to_group( sound->device, &sound->sound, &sound->group, group, "audio_sound_set_group" );
+}
+
+audio_group* AUDIO_CALL audio_sound_get_group( audio_sound* sound )
+{
+    return sound ? sound->group : NULL;
+}
+
+audio_result AUDIO_CALL audio_sound_play_one_shot( audio_sound* sound )
+{
+    audio_one_shot* shot;
+    ma_sound*       copy;
+    ma_sound*       source;
+    ma_uint32       flags = 0;
+    ma_result       result;
+    float           inner, outer, gain;
+    ma_uint32       listener;
+
+    if ( !sound )
+        return AUDIO_INVALID_ARGS;
+
+    source = &sound->sound;
+
+    /* Free the one-shots that have finished playing, so they don't pile up. */
+    audio__free_finished_one_shots( sound->device );
+
+    shot = (audio_one_shot*)calloc( 1, sizeof( audio_one_shot ) );
+    if ( !shot )
+        return AUDIO_OUT_OF_MEMORY;
+
+    if ( !ma_sound_is_spatialization_enabled( source ) )
+        flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
+
+    /* The copy shares the decoded audio data with the sound. This doesn't work for
+     * streamed sounds, which read the file while they play. */
+    copy   = &shot->sound;
+    result = ma_sound_init_copy( &sound->device->engine, source, flags, sound->group ? &sound->group->group : NULL, copy );
+    if ( result != MA_SUCCESS )
+    {
+        if ( result == MA_INVALID_OPERATION )
+            audio__log( AUDIO_LOG_LEVEL_ERROR, "audio_sound_play_one_shot: streamed sounds (music) can't be played as a one-shot." );
+        else
+            audio__log( AUDIO_LOG_LEVEL_ERROR, "audio_sound_play_one_shot: %s", ma_result_description( result ) );
+        free( shot );
+        return result == MA_INVALID_OPERATION ? AUDIO_INVALID_OPERATION : audio__result( result );
+    }
+
+    /* Copy the sound's current settings (but not its looping or its cursor). */
+    ma_sound_set_volume( copy, ma_sound_get_volume( source ) * ma_sound_get_current_fade_volume( source ) );
+    ma_sound_set_pan( copy, ma_sound_get_pan( source ) );
+    ma_sound_set_pitch( copy, ma_sound_get_pitch( source ) );
+    ma_sound_set_position( copy, ma_sound_get_position( source ).x, ma_sound_get_position( source ).y, ma_sound_get_position( source ).z );
+    ma_sound_set_direction( copy, ma_sound_get_direction( source ).x, ma_sound_get_direction( source ).y, ma_sound_get_direction( source ).z );
+    ma_sound_set_velocity( copy, ma_sound_get_velocity( source ).x, ma_sound_get_velocity( source ).y, ma_sound_get_velocity( source ).z );
+    ma_sound_get_cone( source, &inner, &outer, &gain );
+    ma_sound_set_cone( copy, inner, outer, gain );
+    ma_sound_set_attenuation_model( copy, ma_sound_get_attenuation_model( source ) );
+    ma_sound_set_rolloff( copy, ma_sound_get_rolloff( source ) );
+    ma_sound_set_min_gain( copy, ma_sound_get_min_gain( source ) );
+    ma_sound_set_max_gain( copy, ma_sound_get_max_gain( source ) );
+    ma_sound_set_min_distance( copy, ma_sound_get_min_distance( source ) );
+    ma_sound_set_max_distance( copy, ma_sound_get_max_distance( source ) );
+    ma_sound_set_doppler_factor( copy, ma_sound_get_doppler_factor( source ) );
+    listener = ma_sound_get_pinned_listener_index( source );
+    if ( listener != MA_LISTENER_INDEX_CLOSEST )
+        ma_sound_set_pinned_listener_index( copy, listener );
+
+    result = ma_sound_start( copy );
+    if ( result != MA_SUCCESS )
+    {
+        ma_sound_uninit( copy );
+        free( shot );
+        return audio__result( result );
+    }
+
+    shot->group             = sound->group;
+    shot->next              = sound->device->one_shots;
+    sound->device->one_shots = shot;
+    return AUDIO_SUCCESS;
 }
 
 audio_result AUDIO_CALL audio_sound_seek( audio_sound* sound, uint64_t milliseconds )

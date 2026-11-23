@@ -1,13 +1,17 @@
 // Brick Bounce: a small game that shows how to use the Audio library in a game.
 //
-//  - Background music that streams from a file, and fades when the game is paused
-//    or over.
+//  - Background music that streams from a file. It fades when the game is paused,
+//    and fades out and stops when the game is over.
+//  - Two groups, for the music and for the sound effects, with a volume slider for
+//    each on the pause screen.
 //  - Sound effects that are panned to where they happen, with a pitch that changes
-//    with the game (bricks hit in a row sound higher and higher).
+//    with the game (bricks hit in a row sound higher and higher). They play as
+//    one-shots, so effects in quick succession overlap.
 //  - Short tunes made with a Waveform, without any sound files.
 //
 // Controls: move with the mouse or the arrow keys, launch the ball with a click or
-// space, pause with P or Escape.
+// space, pause with P or Escape. On the pause screen, change the volumes with the
+// arrow keys or by clicking the sliders.
 
 #include "font.h"
 #include "platform.h"
@@ -85,8 +89,8 @@ public:
         float duration;   // In seconds.
     };
 
-    explicit Jingle( Audio::Waveform::Type type, float amplitude )
-    : waveform { type, amplitude }
+    Jingle( const Audio::Group& group, Audio::Waveform::Type type, float amplitude )
+    : waveform { group, type, amplitude }
     {}
 
     void play( std::vector<Note> tune )
@@ -136,12 +140,21 @@ private:
 constexpr float C5 = 523.25f, E5 = 659.26f, G5 = 783.99f, C6 = 1046.50f;
 constexpr float G4 = 392.00f, Eb4 = 311.13f, C4 = 261.63f, G3 = 196.00f;
 
+// Two groups (channels): one for the music and one for the sound effects, so the
+// player can set their volumes separately (on the pause screen).
+Audio::Group musicGroup;
+Audio::Group effectsGroup;
+
 Audio::Sound music;
 Audio::Sound paddleSound;
 Audio::Sound wallSound;
 Audio::Sound brickSound;
 Audio::Sound loseSound;
-Jingle       jingle { Audio::Waveform::Type::Square, 0.12f };
+Jingle       jingle { effectsGroup, Audio::Waveform::Type::Square, 0.12f };
+
+// The volumes of the groups, in steps of 10% [0 .. 10].
+int musicLevel   = 10;
+int effectsLevel = 10;
 
 // The music fades between these volumes.
 constexpr float MusicVolume       = 1.0f;
@@ -157,7 +170,10 @@ void playEffect( Audio::Sound& sound, float x, float pitch = 1.0f )
 
     sound.setPan( ( x / Width * 2.0f - 1.0f ) * 0.75f );  // -0.75 (left) to 0.75 (right).
     sound.setPitch( pitch * variation( rng ) );
-    sound.replay();
+
+    // Play an overlapping copy with these settings, so effects in quick succession
+    // (several bricks in a row) don't cut each other off.
+    sound.playOneShot();
 }
 
 // ---------------------------------------------------------------------------
@@ -331,7 +347,18 @@ void newGame()
     score = 0;
     lives = 3;
     startLevel( 1 );
-    music.setFade( MusicVolume, 1000 );
+
+    if ( music.isPlaying() )
+    {
+        music.setFade( MusicVolume, 1000 );
+    }
+    else
+    {
+        // After a game over, the music was stopped with a fade-out: start it again
+        // where it stopped, and fade it in.
+        music.play();
+        music.setFade( 0.0f, MusicVolume, 1000 );
+    }
 }
 
 void launchBall()
@@ -422,6 +449,81 @@ void moveBall( float deltaTime )
     }
 }
 
+// ---------------------------------------------------------------------------
+// Volume sliders (on the pause screen)
+// ---------------------------------------------------------------------------
+
+constexpr int VolumeSteps    = 10;  // Each step is 10%.
+constexpr int SliderX        = 300;
+constexpr int SliderStep     = 22;  // The width of one step, in pixels.
+constexpr int SliderHeight   = 24;
+constexpr int SliderY[2]     = { 220, 270 };  // Music, effects.
+int           selectedSlider = 0;             // For the keyboard: 0 = music, 1 = effects.
+
+// The area that can be clicked or tapped: the steps, and a bit to the left for 0%.
+Rect sliderArea( int slider )
+{
+    return { SliderX - 40.0f, SliderY[slider] - 8.0f, VolumeSteps * SliderStep + 48.0f, SliderHeight + 16.0f };
+}
+
+void setVolumeLevel( int slider, int level )
+{
+    level = std::clamp( level, 0, VolumeSteps );
+    if ( slider == 0 )
+    {
+        musicLevel = level;
+        musicGroup.setVolume( static_cast<float>( level ) / VolumeSteps );
+    }
+    else
+    {
+        effectsLevel = level;
+        effectsGroup.setVolume( static_cast<float>( level ) / VolumeSteps );
+        paddleSound.setPan( 0.0f );
+        paddleSound.setPitch( 1.0f );
+        paddleSound.playOneShot();  // So the player hears the new volume.
+    }
+}
+
+// Returns true if the mouse click (or tap) was on a slider.
+bool clickVolumeSlider()
+{
+    for ( int slider = 0; slider < 2; ++slider )
+    {
+        if ( isMouseOver( sliderArea( slider ) ) )
+        {
+            const int x    = Platform::mouseX() - SliderX;
+            selectedSlider = slider;
+            setVolumeLevel( slider, x < 0 ? 0 : x / SliderStep + 1 );
+            return true;
+        }
+    }
+    return false;
+}
+
+// Up and down choose a slider, left and right change its volume.
+void updateVolumeSlidersWithKeys()
+{
+    if ( Platform::wasKeyPressed( Key::Up ) )
+        selectedSlider = 0;
+    if ( Platform::wasKeyPressed( Key::Down ) )
+        selectedSlider = 1;
+
+    const int level = selectedSlider == 0 ? musicLevel : effectsLevel;
+    if ( Platform::wasKeyPressed( Key::Left ) )
+        setVolumeLevel( selectedSlider, level - 1 );
+    if ( Platform::wasKeyPressed( Key::Right ) )
+        setVolumeLevel( selectedSlider, level + 1 );
+}
+
+void drawVolumeSlider( int slider, std::string_view label, int level )
+{
+    const int  y        = SliderY[slider];
+    const bool selected = slider == selectedSlider && !Platform::isUsingTouch();
+    drawText( label, SliderX - 40 - textWidth( label, 3 ), y + 2, 3, selected ? 0xFFFFFF : 0xA0A8C0 );
+    for ( int step = 0; step < VolumeSteps; ++step )
+        fillRect( SliderX + step * SliderStep, y, SliderStep - 4, SliderHeight, step < level ? 0xFFE050 : 0x303850 );
+}
+
 void update( float deltaTime )
 {
     stateTime += deltaTime;
@@ -493,7 +595,7 @@ void update( float deltaTime )
                 else
                 {
                     setState( State::GameOver );
-                    music.setFade( 0.0f, 2000 );
+                    music.stop( 2000 );  // Fade out over 2 seconds, then stop.
                     jingle.play( { { G4, 0.2f }, { Eb4, 0.2f }, { C4, 0.2f }, { G3, 0.6f } } );
                 }
             }
@@ -508,9 +610,14 @@ void update( float deltaTime )
     }
 
     case State::Paused:
-        if ( action )
+    {
+        // Click a volume slider, or use the arrow keys. Clicking anywhere else continues.
+        const bool clickedSlider = clicked && !clickedFullscreen && !clickedPause && clickVolumeSlider();
+        updateVolumeSlidersWithKeys();
+        if ( action && !clickedSlider )
             togglePause();
         break;
+    }
 
     case State::LevelClear:
         if ( stateTime > 2.0f )
@@ -600,8 +707,15 @@ void draw()
             drawTextCentered( click + " TO LAUNCH", 300, 3, 0xFFE050 );
         break;
     case State::Paused:
-        drawTextCentered( "PAUSED", 280, 5, 0xFFFFFF );
-        drawTextCentered( click + " TO CONTINUE", 340, 3, 0xA0A8C0 );
+        // A panel behind the text, over the bricks.
+        fillRect( 78, 108, Width - 156, 304, 0x303850 );
+        fillRect( 80, 110, Width - 160, 300, BackgroundColor );
+        drawTextCentered( "PAUSED", 140, 5, 0xFFFFFF );
+        drawVolumeSlider( 0, "MUSIC", musicLevel );
+        drawVolumeSlider( 1, "EFFECTS", effectsLevel );
+        if ( !touch )
+            drawTextCentered( "VOLUME: ARROW KEYS OR CLICK", 330, 2, 0xA0A8C0 );
+        drawTextCentered( click + " TO CONTINUE", 370, 3, 0xFFE050 );
         break;
     case State::LevelClear:
         drawTextCentered( "LEVEL CLEAR!", 280, 5, 0xFFE050 );
@@ -633,16 +747,17 @@ int main( int argc, char* argv[] )
     }
 
     // Music is streamed from the file while it plays, instead of loading it all into memory.
-    music.load( "chiptune_theme.ogg", Audio::Sound::Type::Music );
+    music.load( musicGroup, "chiptune_theme.ogg", Audio::Sound::Type::Music );
     music.setLooping( true );
     music.setVolume( 0.4f );
     music.play();  // On the web, the browser starts the sound after the first click.
 
-    paddleSound.load( "paddle.wav" );
-    wallSound.load( "wall.wav" );
+    // The sound effects play through the effects group.
+    paddleSound.load( effectsGroup, "paddle.wav" );
+    wallSound.load( effectsGroup, "wall.wav" );
     wallSound.setVolume( 0.6f );
-    brickSound.load( "brick.wav" );
-    loseSound.load( "lose.wav" );
+    brickSound.load( effectsGroup, "brick.wav" );
+    loseSound.load( effectsGroup, "lose.wav" );
 
     resetBricks();
 

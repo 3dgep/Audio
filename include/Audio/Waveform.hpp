@@ -4,6 +4,7 @@
 
 #include "Config.hpp"
 #include "Device.hpp"
+#include "Group.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -46,10 +47,27 @@ public:
         create( device, type, amplitude, frequency );
     }
 
+    /// Create a waveform that plays through a group. The waveform starts stopped.
+    Waveform( const Group& group, Type type, float amplitude = 1.0f, float frequency = 440.0f )
+    {
+        create( group, type, amplitude, frequency );
+    }
+
     /// Create (or replace) this waveform on the default device.
     Result create( Type type, float amplitude = 1.0f, float frequency = 440.0f )
     {
         return createOn( detail::useDevice( nullptr ), type, amplitude, frequency );
+    }
+
+    /// Create (or replace) this waveform, playing through a group.
+    Result create( const Group& group, Type type, float amplitude = 1.0f, float frequency = 440.0f )
+    {
+        if ( !group )
+        {
+            reset();
+            return Result::InvalidArgs;
+        }
+        return createOn( nullptr, type, amplitude, frequency, group.get() );
     }
 
     /// Create (or replace) this waveform on a specific device.
@@ -106,6 +124,20 @@ public:
         return static_cast<Type>( audio_waveform_get_type( get() ) );
     }
 
+    /// Move the waveform to a group (see `Sound::setGroup`). Use
+    /// `Audio::Group::none()` to play it straight to the device's output again.
+    Result setGroup( const Group& group ) noexcept
+    {
+        return detail::toResult( audio_waveform_set_group( get(), group.get() ) );
+    }
+
+    /// The group the waveform plays through. An empty group means it plays straight
+    /// to the device's output.
+    Group getGroup() const
+    {
+        return Group::fromHandle( audio_waveform_get_group( get() ) );
+    }
+
     /// Set the amplitude (volume). 0 is silent, 1 is full volume.
     void setAmplitude( float amplitude ) noexcept
     {
@@ -138,17 +170,34 @@ public:
     }
 
 private:
-    Result createOn( audio_device* device, Type type, float amplitude, float frequency )
+    Result createOn( audio_device* device, Type type, float amplitude, float frequency, audio_group* group = nullptr )
     {
         reset();
 
+        const auto         waveType = static_cast<audio_waveform_type>( type );
         audio_waveform*    waveform = nullptr;
-        const audio_result result   = audio_waveform_create( device, static_cast<audio_waveform_type>( type ), amplitude, frequency, &waveform );
+        const audio_result result   = group ? audio_waveform_create_in_group( group, waveType, amplitude, frequency, &waveform )
+                                            : audio_waveform_create( device, waveType, amplitude, frequency, &waveform );
         impl                        = detail::adopt( waveform, &audio_waveform_destroy );
         return detail::toResult( result );
     }
 
     std::shared_ptr<audio_waveform> impl;
 };
+
+// Group::add and Group::remove for waveforms (declared in Group.hpp).
+inline Result Group::add( const Waveform& waveform ) noexcept
+{
+    if ( !get() || !waveform )
+        return Result::InvalidArgs;
+    return detail::toResult( audio_waveform_set_group( waveform.get(), get() ) );
+}
+
+inline Result Group::remove( const Waveform& waveform ) noexcept
+{
+    if ( !get() || audio_waveform_get_group( waveform.get() ) != get() )
+        return Result::Success;  // Not in this group: nothing to do.
+    return detail::toResult( audio_waveform_set_group( waveform.get(), nullptr ) );
+}
 
 }  // namespace Audio

@@ -326,6 +326,8 @@ void audio__release_device( audio_device* device )
 
     if ( ref_count == 0 )
     {
+        /* One-shots don't keep their device alive: stop them. */
+        audio__free_one_shots( device, NULL, AUDIO_TRUE );
         ma_engine_uninit( &device->engine );
         free( device );
     }
@@ -468,6 +470,25 @@ audio_result AUDIO_CALL audio_play_sound( audio_device* device, const char* file
         audio__log( AUDIO_LOG_LEVEL_ERROR, "Failed to play sound '%s': %s", file_path, ma_result_description( result ) );
 
     audio__release_device( device );
+    return audio__result( result );
+}
+
+audio_result AUDIO_CALL audio_play_sound_in_group( audio_group* group, const char* file_path )
+{
+    ma_result result;
+
+    if ( !group )
+        return audio_play_sound( NULL, file_path );
+
+    if ( !file_path )
+        return AUDIO_INVALID_ARGS;
+
+    /* miniaudio's fire-and-forget sounds are detached (and silenced) if the group is
+     * destroyed while they play, so they don't need to keep the group alive. */
+    result = ma_engine_play_sound( &group->device->engine, file_path, &group->group );
+    if ( result != MA_SUCCESS )
+        audio__log( AUDIO_LOG_LEVEL_ERROR, "Failed to play sound '%s': %s", file_path, ma_result_description( result ) );
+
     return audio__result( result );
 }
 

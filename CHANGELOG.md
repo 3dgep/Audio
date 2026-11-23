@@ -4,6 +4,21 @@ All notable changes to the Audio library are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-23
+
+### Added
+
+- Groups (`Audio::Group`, `audio_group_*`): channels that sounds and waveforms play through, with their own volume, pan, pitch and fade. Stopping a group pauses everything in it. For example, a music and an effects group let the player set their volumes separately. Groups can contain other groups.
+- `Sound( group, path, type )`, `Waveform( group, ... )` and `Audio::playSound( path, group )` to play through a group (C: `audio_sound_create_in_group`, `audio_waveform_create_in_group`, `audio_play_sound_in_group`).
+- Move sounds and waveforms between groups after they were created, also while they play: `group.add( sound )`, `group.remove( sound )`, `sound.setGroup( group )` and `sound.getGroup()`, and the same for waveforms. `Group::none()` is "no group" (the device's output), and `==` compares groups. (C: `audio_sound_set_group`, `audio_sound_get_group`, `audio_waveform_set_group`, `audio_waveform_get_group`, `audio_group_retain`.)
+- `Sound::playOneShot` (`audio_sound_play_one_shot`): play an overlapping copy of a sound, with its current volume, pan, pitch and 3D position. For sound effects that can play several times at once.
+- `Sound::stop( fade )` and `Group::stop( fade )` (`audio_sound_stop_with_fade`, `audio_group_stop_with_fade`): fade out, then stop. Playing again restores the volume from before the fade.
+- The game example has a music and an effects group with a volume slider for each on the pause screen, plays its sound effects as one-shots, and fades out the music on game over. The fade example shows `stop( fade )`.
+
+### Fixed
+
+- After a stop time set with `Sound::setStopTime` had passed, `play` did nothing: the sound stayed stopped.
+
 ## [2.0.1] - 2026-11-22
 
 ### Added
@@ -156,6 +171,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - Visual Studio 2022 solution and CMake build.
 - Example application with narration and a waveform coin sound effect.
 
+[2.1.0]: https://github.com/3dgep/Audio/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/3dgep/Audio/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/3dgep/Audio/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/3dgep/Audio/compare/v1.0.2...v1.1.0

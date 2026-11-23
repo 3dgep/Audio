@@ -2,7 +2,7 @@
  * Audio v2 - waveforms.
  *
  * A waveform is a miniaudio waveform data source, wrapped in a data source node that
- * is attached to the engine's endpoint.
+ * is attached to a group, or to the engine's endpoint.
  */
 #include "audio_internal.h"
 
@@ -29,7 +29,7 @@ static audio_bool32 audio__to_ma_waveform_type( audio_waveform_type type, ma_wav
     }
 }
 
-audio_result AUDIO_CALL audio_waveform_create( audio_device* device, audio_waveform_type type, float amplitude, float frequency, audio_waveform** out_waveform )
+static audio_result audio__waveform_create( audio_device* device, audio_group* group, audio_waveform_type type, float amplitude, float frequency, audio_waveform** out_waveform )
 {
     audio_waveform*            waveform;
     ma_waveform_type           ma_type;
@@ -51,7 +51,7 @@ audio_result AUDIO_CALL audio_waveform_create( audio_device* device, audio_wavef
         return AUDIO_OUT_OF_MEMORY;
 
     /* The waveform keeps this reference until it is destroyed. */
-    waveform->device = audio__acquire_device( device );
+    waveform->device = audio__acquire_device( group ? group->device : device );
     if ( !waveform->device )
     {
         free( waveform );
@@ -78,9 +78,12 @@ audio_result AUDIO_CALL audio_waveform_create( audio_device* device, audio_wavef
     /* Start stopped, so the waveform is silent until audio_waveform_start is called. */
     result = ma_node_set_state( &waveform->node, ma_node_state_stopped );
     if ( result == MA_SUCCESS )
-        result = ma_node_attach_output_bus( &waveform->node, 0, ma_engine_get_endpoint( engine ), 0 );
+        result = ma_node_attach_output_bus( &waveform->node, 0, audio__group_node( waveform->device, group ), 0 );
     if ( result != MA_SUCCESS )
         goto fail_attach;
+
+    audio__retain_group( group );
+    waveform->group = group;
 
     *out_waveform = waveform;
     return AUDIO_SUCCESS;
@@ -96,6 +99,29 @@ fail_waveform:
     return audio__result( result );
 }
 
+audio_result AUDIO_CALL audio_waveform_create( audio_device* device, audio_waveform_type type, float amplitude, float frequency, audio_waveform** out_waveform )
+{
+    return audio__waveform_create( device, NULL, type, amplitude, frequency, out_waveform );
+}
+
+audio_result AUDIO_CALL audio_waveform_create_in_group( audio_group* group, audio_waveform_type type, float amplitude, float frequency, audio_waveform** out_waveform )
+{
+    return audio__waveform_create( NULL, group, type, amplitude, frequency, out_waveform );
+}
+
+audio_result AUDIO_CALL audio_waveform_set_group( audio_waveform* waveform, audio_group* group )
+{
+    if ( !waveform )
+        return AUDIO_INVALID_ARGS;
+
+    return audio__move_to_group( waveform->device, &waveform->node, &waveform->group, group, "audio_waveform_set_group" );
+}
+
+audio_group* AUDIO_CALL audio_waveform_get_group( audio_waveform* waveform )
+{
+    return waveform ? waveform->group : NULL;
+}
+
 void AUDIO_CALL audio_waveform_destroy( audio_waveform* waveform )
 {
     if ( !waveform )
@@ -104,6 +130,7 @@ void AUDIO_CALL audio_waveform_destroy( audio_waveform* waveform )
     /* Uninitializing the node detaches it from the graph. */
     ma_data_source_node_uninit( &waveform->node, NULL );
     ma_waveform_uninit( &waveform->waveform );
+    audio__release_group( waveform->group );
     audio__release_device( waveform->device );
     free( waveform );
 }

@@ -4,6 +4,7 @@
 
 #include "Config.hpp"
 #include "Device.hpp"
+#include "Group.hpp"
 #include "Listener.hpp"
 #include "Vector.hpp"
 
@@ -22,8 +23,8 @@ namespace Audio
 /// position, ...), and the sound is destroyed when the last copy is gone.
 ///
 /// For an independent sound, load the same file again: decoded audio data is shared
-/// between sounds loaded from the same file, so this is cheap. For overlapping one-shot
-/// effects, use `Audio::playSound`.
+/// between sounds loaded from the same file, so this is cheap. For sound effects that
+/// overlap (footsteps, hits), use `playOneShot`.
 ///
 /// All functions are safe to call on an empty sound (they do nothing), so a sound that
 /// failed to load is silent rather than a crash.
@@ -68,6 +69,12 @@ public:
         load( device, filePath, type );
     }
 
+    /// Load a sound that plays through a group (for example "music" or "effects").
+    Sound( const Group& group, const std::filesystem::path& filePath, Type type = Type::Sound )
+    {
+        load( group, filePath, type );
+    }
+
     /// Load (or replace) this sound on the default device.
     Result load( const std::filesystem::path& filePath, Type type = Type::Sound )
     {
@@ -85,6 +92,17 @@ public:
         return create( device.get(), filePath, type );
     }
 
+    /// Load (or replace) this sound, playing through a group.
+    Result load( const Group& group, const std::filesystem::path& filePath, Type type = Type::Sound )
+    {
+        if ( !group )
+        {
+            reset();
+            return Result::InvalidArgs;
+        }
+        return create( nullptr, filePath, type, group.get() );
+    }
+
     /// Release this handle, leaving this object empty. The sound itself is destroyed
     /// when the last copy is released.
     void reset() noexcept
@@ -100,6 +118,7 @@ public:
 
     /// Start playing (or resume) the sound. Does nothing if it is already playing.
     /// A sound that has played to its end starts again from the beginning.
+    /// Also cancels a fade-out (`stop( fade )`).
     Result play() noexcept
     {
         return detail::toResult( audio_sound_play( get() ) );
@@ -111,10 +130,56 @@ public:
         return detail::toResult( audio_sound_stop( get() ) );
     }
 
+    /// Fade the sound out over a number of milliseconds, then stop it.
+    /// `play` restores the volume from before the fade.
+    Result stop( uint64_t fadeOutMilliseconds ) noexcept
+    {
+        return detail::toResult( audio_sound_stop_with_fade( get(), fadeOutMilliseconds ) );
+    }
+
+    /// Fade the sound out, then stop it, for example `music.stop( 2s )`.
+    template<class Rep, class Period>
+    Result stop( const std::chrono::duration<Rep, Period>& fadeOut ) noexcept
+    {
+        return stop( detail::toMilliseconds( fadeOut ) );
+    }
+
     /// The same as `stop`.
     Result pause() noexcept
     {
         return stop();
+    }
+
+    /// Move the sound to a group, for example `song.setGroup( music )`. A sound is in
+    /// one group at a time, so this takes it out of its current group. Use
+    /// `Audio::Group::none()` to play it straight to the device's output again. A
+    /// playing sound keeps playing. Returns `Result::InvalidArgs` if the sound is empty,
+    /// or if the group belongs to a different device.
+    Result setGroup( const Group& group ) noexcept
+    {
+        return detail::toResult( audio_sound_set_group( get(), group.get() ) );
+    }
+
+    /// The group the sound plays through. An empty group (`if ( !sound.getGroup() )`)
+    /// means it plays straight to the device's output.
+    Group getGroup() const
+    {
+        return Group::fromHandle( audio_sound_get_group( get() ) );
+    }
+
+    /// Play a copy of the sound that overlaps with it and with other copies. Use this
+    /// for sound effects that can play several times at once, like footsteps or hits.
+    ///
+    /// The copy starts from the beginning, with this sound's current settings (volume,
+    /// pan, pitch, 3D position, ...) and in the same group. To give a copy its own
+    /// pitch, set the pitch first, then call `playOneShot`. Copies can't be stopped;
+    /// they end on their own.
+    ///
+    /// Only works for `Type::Sound`: music is streamed and can't be copied
+    /// (returns `Result::InvalidOperation`).
+    Result playOneShot() noexcept
+    {
+        return detail::toResult( audio_sound_play_one_shot( get() ) );
     }
 
     /// Play the sound again from the beginning.
@@ -426,19 +491,36 @@ public:
     }
 
 private:
-    Result create( audio_device* device, const std::filesystem::path& filePath, Type type )
+    Result create( audio_device* device, const std::filesystem::path& filePath, Type type, audio_group* group = nullptr )
     {
         // Only release this handle: other copies keep the previous sound.
         reset();
 
-        const audio_sound_flags flags  = type == Type::Music ? AUDIO_SOUND_FLAGS_MUSIC : AUDIO_SOUND_FLAG_NONE;
-        audio_sound*            sound  = nullptr;
-        const audio_result      result = audio_sound_create( device, detail::toUtf8( filePath ).c_str(), flags, &sound );
+        const audio_sound_flags flags = type == Type::Music ? AUDIO_SOUND_FLAGS_MUSIC : AUDIO_SOUND_FLAG_NONE;
+        const std::string       path  = detail::toUtf8( filePath );
+        audio_sound*            sound = nullptr;
+        const audio_result      result = group ? audio_sound_create_in_group( group, path.c_str(), flags, &sound )
+                                               : audio_sound_create( device, path.c_str(), flags, &sound );
         impl                           = detail::adopt( sound, &audio_sound_destroy );
         return detail::toResult( result );
     }
 
     std::shared_ptr<audio_sound> impl;
 };
+
+// Group::add and Group::remove for sounds (declared in Group.hpp).
+inline Result Group::add( const Sound& sound ) noexcept
+{
+    if ( !get() || !sound )
+        return Result::InvalidArgs;
+    return detail::toResult( audio_sound_set_group( sound.get(), get() ) );
+}
+
+inline Result Group::remove( const Sound& sound ) noexcept
+{
+    if ( !get() || audio_sound_get_group( sound.get() ) != get() )
+        return Result::Success;  // Not in this group: nothing to do.
+    return detail::toResult( audio_sound_set_group( sound.get(), nullptr ) );
+}
 
 }  // namespace Audio

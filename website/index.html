@@ -77,12 +77,12 @@ int main()
 
             <div class="cards cards-3">
                 <div class="card">
-                    <h3>Streamed music</h3>
-                    <p>The background music is streamed from an OGG file. It fades down when you pause, and fades out when the game is over.</p>
+                    <h3>Music and effects groups</h3>
+                    <p>The music and the sound effects play through their own groups. Pause the game to set their volumes with the sliders.</p>
                 </div>
                 <div class="card">
-                    <h3>Panned effects</h3>
-                    <p>Every bounce is panned to where it happens. Hit bricks in a row and each one sounds a little higher.</p>
+                    <h3>Overlapping effects</h3>
+                    <p>Every bounce is panned to where it happens and plays as a one-shot, so quick hits overlap. Bricks in a row sound higher and higher.</p>
                 </div>
                 <div class="card">
                     <h3>Waveform jingles</h3>
@@ -104,23 +104,23 @@ int main()
                 </div>
                 <div class="card" style="--accent: var(--orange)">
                     <h3>Sounds and music</h3>
-                    <p>WAV, MP3, FLAC and OGG. Volume, panning, pitch, looping, fading and scheduled start and stop.</p>
+                    <p>WAV, MP3, FLAC and OGG. Overlapping sound effects, volume, panning, pitch, looping and fading.</p>
                 </div>
                 <div class="card" style="--accent: var(--yellow)">
+                    <h3>Groups</h3>
+                    <p>Play sounds through channels, like "music" and "effects", to set their volume or pause them together.</p>
+                </div>
+                <div class="card" style="--accent: var(--green)">
                     <h3>Spatial audio</h3>
                     <p>Place sounds in 3D space around the player, with up to 4 listeners for split-screen games.</p>
                 </div>
-                <div class="card" style="--accent: var(--green)">
+                <div class="card" style="--accent: var(--blue)">
                     <h3>Retro waveforms</h3>
                     <p>Generate sine, square, triangle and sawtooth tones for sound effects like early video games.</p>
                 </div>
-                <div class="card" style="--accent: var(--blue)">
-                    <h3>C++ and C</h3>
-                    <p>A header-only C++17 API on top of a stable C99 API. One library for both Debug and Release builds.</p>
-                </div>
                 <div class="card" style="--accent: var(--purple)">
-                    <h3>Runs everywhere</h3>
-                    <p>Windows, Linux and the web (Emscripten). Built on the excellent <a href="https://miniaud.io/">miniaudio</a>.</p>
+                    <h3>C++ and C, everywhere</h3>
+                    <p>A header-only C++17 API on a stable C99 API, for Windows, Linux and the web. Built on the excellent <a href="https://miniaud.io/">miniaudio</a>.</p>
                 </div>
             </div>
         </section>
@@ -134,20 +134,23 @@ int main()
                 <div class="tab-list" role="tablist" aria-label="Code examples">
                     <button role="tab" id="tab-sounds" aria-controls="panel-sounds" aria-selected="true">Sounds</button>
                     <button role="tab" id="tab-music" aria-controls="panel-music" aria-selected="false" tabindex="-1">Music</button>
+                    <button role="tab" id="tab-groups" aria-controls="panel-groups" aria-selected="false" tabindex="-1">Groups</button>
                     <button role="tab" id="tab-spatial" aria-controls="panel-spatial" aria-selected="false" tabindex="-1">Spatial</button>
                     <button role="tab" id="tab-waveforms" aria-controls="panel-waveforms" aria-selected="false" tabindex="-1">Waveforms</button>
                     <button role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false" tabindex="-1">C API</button>
                 </div>
 
                 <div class="tab-panel" role="tabpanel" id="panel-sounds" aria-labelledby="tab-sounds">
-                    <p>Fire and forget, or load the sound for more control.</p>
+                    <p>Fire and forget, or load the sound for more control. One-shots overlap, so the same effect can play several times at once.</p>
 <pre class="code" data-lang="cpp"><code>Audio::playSound( "explosion.wav" );  // Fire and forget.
 
 Audio::Sound coin { "coin.wav" };
 coin.setVolume( 0.5f );  // 0 is silent, 1 is 100%.
 coin.setPan( -1.0f );    // -1 is left, 0 is centered, 1 is right.
 coin.setPitch( 1.5f );   // Higher values sound higher.
-coin.play();</code></pre>
+coin.play();
+
+coin.playOneShot();      // A copy that overlaps with the others.</code></pre>
                 </div>
 
                 <div class="tab-panel" role="tabpanel" id="panel-music" aria-labelledby="tab-music" hidden>
@@ -158,7 +161,23 @@ Audio::Sound music { "music.ogg", Audio::Sound::Type::Music };
 music.setLooping( true );
 music.play();
 
-music.setFade( 0.0f, 2s );  // Fade out over 2 seconds.</code></pre>
+music.setFade( 0.0f, 2s );  // Fade out over 2 seconds.
+music.stop( 2s );           // Fade out, then stop.</code></pre>
+                </div>
+
+                <div class="tab-panel" role="tabpanel" id="panel-groups" aria-labelledby="tab-groups" hidden>
+                    <p>Play sounds through groups, to set the volume of the music and of the sound effects separately.</p>
+<pre class="code" data-lang="cpp"><code>Audio::Group music;
+Audio::Group effects;
+
+Audio::Sound song { music, "music.ogg", Audio::Sound::Type::Music };
+Audio::Sound coin { effects, "coin.wav" };
+
+music.setVolume( 0.5f );  // A volume slider in the options menu.
+effects.stop();           // Pause all sound effects.
+
+Audio::Sound jingle { "jingle.wav" };
+effects.add( jingle );    // Add a sound to a group later.</code></pre>
                 </div>
 
                 <div class="tab-panel" role="tabpanel" id="panel-spatial" aria-labelledby="tab-spatial" hidden>
@@ -221,7 +240,7 @@ audio_sound_destroy( music );</code></pre>
 <pre class="code" data-lang="cmake"><code>include(FetchContent)
 FetchContent_Declare(Audio
     GIT_REPOSITORY https://github.com/3dgep/Audio.git
-    GIT_TAG        v2.0.1)
+    GIT_TAG        v2.1.0)
 FetchContent_MakeAvailable(Audio)
 
 target_link_libraries(MyGame PRIVATE Audio::Audio)</code></pre>

@@ -26,6 +26,9 @@
     <ClInclude Include="include\Audio\Device.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\Audio\Group.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="include\Audio\Listener.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -47,6 +50,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\audio_device.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio_group.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\audio_sound.c">

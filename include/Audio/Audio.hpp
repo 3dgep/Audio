@@ -27,5 +27,6 @@
 #include "Vector.hpp"
 #include "Listener.hpp"
 #include "Device.hpp"
+#include "Group.hpp"
 #include "Sound.hpp"
 #include "Waveform.hpp"

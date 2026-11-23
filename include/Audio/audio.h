@@ -85,8 +85,8 @@ extern "C" {
  * ------------------------------------------------------------------------------ */
 
 #define AUDIO_VERSION_MAJOR 2
-#define AUDIO_VERSION_MINOR 0
-#define AUDIO_VERSION_PATCH 1
+#define AUDIO_VERSION_MINOR 1
+#define AUDIO_VERSION_PATCH 0
 
 /* Pack a version into a uint32_t (10 bits major, 10 bits minor, 12 bits patch), and
  * get the parts back out. Packed versions can be compared with <, == and >. */
@@ -129,6 +129,7 @@ typedef char audio_static_assert_float_size[( sizeof( float ) == 4 ) ? 1 : -1];
 /* Opaque handles. Create them with the *_create functions and destroy them with the
  * matching *_destroy functions. */
 typedef struct audio_device   audio_device;
+typedef struct audio_group    audio_group;
 typedef struct audio_sound    audio_sound;
 typedef struct audio_waveform audio_waveform;
 
@@ -294,6 +295,75 @@ AUDIO_API void AUDIO_CALL audio_listener_set_cone( audio_device* device, uint32_
 AUDIO_API void AUDIO_CALL audio_listener_get_cone( audio_device* device, uint32_t index, float* out_inner_angle, float* out_outer_angle, float* out_outer_gain );
 
 /* ------------------------------------------------------------------------------
+ * Group
+ *
+ * A group is a channel that sounds and waveforms play through, like a bus on a
+ * mixing desk, for example "music" and "effects". Its volume, pan, pitch and fade
+ * apply to everything in it, and stopping a group pauses everything in it. Groups
+ * can contain other groups.
+ *
+ * Sounds, waveforms and child groups keep their group alive, so it is safe to
+ * destroy a group while they still exist. One-shots (audio_sound_play_one_shot)
+ * and fire-and-forget sounds (audio_play_sound_in_group) do not: they are stopped
+ * when their group is destroyed.
+ * ------------------------------------------------------------------------------ */
+
+/*
+ * Create a group. Its output goes to parent, or to the device's output when parent
+ * is NULL. device may be NULL to use the default device (or the parent's device);
+ * if both are given, parent must belong to device.
+ * The group is created playing. On success, destroy it with audio_group_destroy.
+ * On failure, *out_group is set to NULL.
+ */
+AUDIO_API audio_result AUDIO_CALL audio_group_create( audio_device* device, audio_group* parent, audio_group** out_group );
+
+/* Release a group. Passing NULL does nothing. The group is freed once all sounds,
+ * waveforms and child groups in it have been destroyed. */
+AUDIO_API void AUDIO_CALL audio_group_destroy( audio_group* group );
+
+/* Add a reference to a group, for example to keep a group from audio_sound_get_group.
+ * Every call must be matched by a call to audio_group_destroy. Passing NULL does
+ * nothing. */
+AUDIO_API void AUDIO_CALL audio_group_retain( audio_group* group );
+
+/* Resume a group after audio_group_stop, so the sounds in it can be heard again.
+ * Also cancels a fade-out (audio_group_stop_with_fade). */
+AUDIO_API audio_result AUDIO_CALL audio_group_play( audio_group* group );
+
+/* Pause everything in the group. The sounds keep their playback positions, and
+ * continue when the group is played again. */
+AUDIO_API audio_result AUDIO_CALL audio_group_stop( audio_group* group );
+
+/* Fade the group out over a number of milliseconds, then pause it as with
+ * audio_group_stop. audio_group_play restores the volume from before the fade. */
+AUDIO_API audio_result AUDIO_CALL audio_group_stop_with_fade( audio_group* group, uint64_t milliseconds );
+
+/* Returns AUDIO_TRUE unless the group was stopped. */
+AUDIO_API audio_bool32 AUDIO_CALL audio_group_is_playing( audio_group* group );
+
+/* The volume of everything in the group, on top of each sound's own volume.
+ * 0 is silent, 1 is 100%, values above 1 amplify. Default: 1. */
+AUDIO_API void AUDIO_CALL  audio_group_set_volume( audio_group* group, float volume );
+AUDIO_API float AUDIO_CALL audio_group_get_volume( audio_group* group );
+
+/* Pan. -1 is fully left, 0 is centered, 1 is fully right. Default: 0. */
+AUDIO_API void AUDIO_CALL  audio_group_set_pan( audio_group* group, float pan );
+AUDIO_API float AUDIO_CALL audio_group_get_pan( audio_group* group );
+
+/* Pitch of everything in the group. 1 is the original pitch. Values of 0 or less are
+ * ignored. Default: 1. */
+AUDIO_API void AUDIO_CALL  audio_group_set_pitch( audio_group* group, float pitch );
+AUDIO_API float AUDIO_CALL audio_group_get_pitch( audio_group* group );
+
+/* Fade the group's volume from begin_volume to end_volume over a number of
+ * milliseconds. Pass a negative begin_volume to start from the current volume. */
+AUDIO_API void AUDIO_CALL audio_group_set_fade( audio_group* group, float begin_volume, float end_volume, uint64_t milliseconds );
+
+/* Play a sound effect in a "fire and forget" way, through a group (see
+ * audio_play_sound). group may be NULL to use the default device's output. */
+AUDIO_API audio_result AUDIO_CALL audio_play_sound_in_group( audio_group* group, const char* file_path );
+
+/* ------------------------------------------------------------------------------
  * Sound
  * ------------------------------------------------------------------------------ */
 
@@ -328,17 +398,54 @@ typedef int32_t audio_attenuation_model;
  */
 AUDIO_API audio_result AUDIO_CALL audio_sound_create( audio_device* device, const char* file_path, audio_sound_flags flags, audio_sound** out_sound );
 
+/* Load a sound that plays through a group (see audio_sound_create). group may be NULL
+ * to use the default device's output. The sound keeps the group alive. */
+AUDIO_API audio_result AUDIO_CALL audio_sound_create_in_group( audio_group* group, const char* file_path, audio_sound_flags flags, audio_sound** out_sound );
+
 /* Destroy a sound. Passing NULL does nothing. */
 AUDIO_API void AUDIO_CALL audio_sound_destroy( audio_sound* sound );
 
 /*
  * Start playing (or resume) the sound. Does nothing if it is already playing.
  * A sound that has played to its end starts again from the beginning.
+ * Also cancels a fade-out (audio_sound_stop_with_fade).
  */
 AUDIO_API audio_result AUDIO_CALL audio_sound_play( audio_sound* sound );
 
 /* Stop the sound. The cursor is kept, so audio_sound_play resumes from the same position. */
 AUDIO_API audio_result AUDIO_CALL audio_sound_stop( audio_sound* sound );
+
+/* Fade the sound out over a number of milliseconds, then stop it as with
+ * audio_sound_stop. audio_sound_play restores the volume from before the fade.
+ * A sound that isn't playing is stopped right away. */
+AUDIO_API audio_result AUDIO_CALL audio_sound_stop_with_fade( audio_sound* sound, uint64_t milliseconds );
+
+/*
+ * Play a copy of the sound, which overlaps with the sound and with other copies. Use
+ * this for sound effects that can play several times at once, like footsteps or hits.
+ *
+ * The copy starts from the beginning, with the sound's current settings (volume, pan,
+ * pitch, 3D position and so on) and in the same group. Changing the sound afterwards
+ * doesn't change copies that are already playing. Copies can't be stopped; they are
+ * freed when they finish, or stopped when their group or device is destroyed.
+ *
+ * Copies share the sound's decoded audio data, so this is cheap. Streamed sounds
+ * (AUDIO_SOUND_FLAG_STREAM) can't be copied: this returns AUDIO_INVALID_OPERATION.
+ */
+AUDIO_API audio_result AUDIO_CALL audio_sound_play_one_shot( audio_sound* sound );
+
+/*
+ * Move the sound to a group, or to the device's output when group is NULL. A sound is
+ * in exactly one place at a time, so this moves it out of its current group. A sound
+ * that is playing keeps playing. The group must belong to the sound's device
+ * (otherwise AUDIO_INVALID_ARGS). The sound keeps its new group alive.
+ * One-shots that are already playing keep their group.
+ */
+AUDIO_API audio_result AUDIO_CALL audio_sound_set_group( audio_sound* sound, audio_group* group );
+
+/* The group the sound plays through, or NULL for the device's output. This does not
+ * add a reference: call audio_group_retain to keep the group. */
+AUDIO_API audio_group* AUDIO_CALL audio_sound_get_group( audio_sound* sound );
 
 /* Move the cursor to a position (in milliseconds) from the start of the sound.
  * Works while the sound is playing or stopped. */
@@ -468,6 +575,18 @@ typedef int32_t audio_waveform_type;
  * example, an unknown type), *out_waveform is set to NULL.
  */
 AUDIO_API audio_result AUDIO_CALL audio_waveform_create( audio_device* device, audio_waveform_type type, float amplitude, float frequency, audio_waveform** out_waveform );
+
+/* Create a waveform that plays through a group (see audio_waveform_create). group may
+ * be NULL to use the default device's output. The waveform keeps the group alive. */
+AUDIO_API audio_result AUDIO_CALL audio_waveform_create_in_group( audio_group* group, audio_waveform_type type, float amplitude, float frequency, audio_waveform** out_waveform );
+
+/* Move the waveform to a group, or to the device's output when group is NULL (see
+ * audio_sound_set_group). */
+AUDIO_API audio_result AUDIO_CALL audio_waveform_set_group( audio_waveform* waveform, audio_group* group );
+
+/* The group the waveform plays through, or NULL for the device's output. This does
+ * not add a reference: call audio_group_retain to keep the group. */
+AUDIO_API audio_group* AUDIO_CALL audio_waveform_get_group( audio_waveform* waveform );
 
 /* Destroy a waveform. Passing NULL does nothing. */
 AUDIO_API void AUDIO_CALL audio_waveform_destroy( audio_waveform* waveform );

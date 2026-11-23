@@ -98,6 +98,7 @@
     <ClInclude Include="include\Audio\Audio.hpp" />
     <ClInclude Include="include\Audio\Config.hpp" />
     <ClInclude Include="include\Audio\Device.hpp" />
+    <ClInclude Include="include\Audio\Group.hpp" />
     <ClInclude Include="include\Audio\Listener.hpp" />
     <ClInclude Include="include\Audio\Sound.hpp" />
     <ClInclude Include="include\Audio\Vector.hpp" />
@@ -107,6 +108,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\audio_device.c">
+      <WarningLevel>Level4</WarningLevel>
+    </ClCompile>
+    <ClCompile Include="src\audio_group.c">
       <WarningLevel>Level4</WarningLevel>
     </ClCompile>
     <ClCompile Include="src\audio_sound.c">

@@ -29,6 +29,7 @@ There is no audio device to set up or shut down. The library does that for you.
 * [Building From Source](#building-from-source)
 * [Playing Sounds](#playing-sounds)
 * [Playing Music](#playing-music)
+* [Groups](#groups)
 * [Spatial Audio](#spatial-audio)
 * [Playing Waveforms](#playing-waveforms)
 * [Using a Specific Device](#using-a-specific-device)
@@ -40,6 +41,8 @@ There is no audio device to set up or shut down. The library does that for you.
 * Play sound effects and stream background music.
 * Supported file types: WAV (`.wav`), MP3 (`.mp3`), FLAC (`.flac`) and OGG (`.ogg`).
 * Volume, panning, pitch, looping, fading and scheduled start/stop.
+* Overlapping sound effects (one-shots), each with its own pitch, pan or position.
+* Groups (channels), for example to set the volume of the music and of the sound effects separately.
 * 3D (spatial) audio with up to 4 listeners.
 * Generated waveforms (sine, square, triangle and sawtooth) for retro sound effects. See [MarioCoin.cpp](examples/getting_started/MarioCoin.cpp).
 * One `Audio.lib` for both the **Debug** and **Release** builds of your game.
@@ -89,7 +92,7 @@ include(FetchContent)
 FetchContent_Declare(
     Audio
     GIT_REPOSITORY https://github.com/3dgep/Audio.git
-    GIT_TAG        v2.0.1
+    GIT_TAG        v2.1.0
 )
 
 FetchContent_MakeAvailable(Audio)
@@ -390,6 +393,21 @@ void playHitSound( Audio::Sound sound )
 
 To play the same file with different settings (for example, a different volume), load it into two separate sounds.
 
+### Overlapping Sounds (One-Shots)
+
+A sound can only play once at a time: `play()` on a sound that is already playing does nothing, and `replay()` starts it over, which cuts off the part that was still playing. For sound effects that can play several times at once, like footsteps, hits or coins, use `playOneShot()`. It plays a copy of the sound, which overlaps with the sound and with other copies:
+
+```cpp
+Audio::Sound hit { "hit.wav" };
+
+hit.setPitch( 1.2f );  // Settings are copied when the one-shot starts...
+hit.playOneShot();
+hit.setPitch( 0.9f );  // ...so each one-shot can sound a bit different.
+hit.playOneShot();
+```
+
+A one-shot starts from the beginning, with the sound's current volume, pan, pitch and 3D position. It can't be stopped; it ends on its own. Copies share the sound's audio data, so they are cheap. One-shots only work for `Type::Sound` (music is streamed and can't be copied).
+
 ### Checking for Errors
 
 If a sound can't be loaded, an error is printed to the console. The sound is then empty: using it is safe, but it doesn't make any noise. To check if a sound loaded:
@@ -432,9 +450,50 @@ using namespace std::chrono_literals;
 
 music.setFade( 0.0f, 2s );        // Fade out from the current volume over 2 seconds.
 music.setFade( 0.0f, 1.0f, 2s );  // Fade in from silence over 2 seconds.
+
+music.stop( 2s );                 // Fade out over 2 seconds, then stop.
+music.play();                     // Continue where it stopped, at the volume from before the fade.
 ```
 
 See the [fade](examples/fade/main.cpp) example for more.
+
+## Groups
+
+A group is a channel that sounds play through, like a channel on a mixing desk. Its volume applies to every sound in it. A typical game has a group for the music and one for the sound effects, so the player can set their volumes separately (for example in an options menu):
+
+```cpp
+Audio::Group music;
+Audio::Group effects;
+
+Audio::Sound song { music, "music.ogg", Audio::Sound::Type::Music };
+Audio::Sound coin { effects, "coin.wav" };
+Audio::playSound( "explosion.wav", effects );  // Fire and forget, through a group.
+
+music.setVolume( 0.5f );      // The music at 50%, the effects stay at 100%.
+effects.setFade( 0.0f, 1s );  // Fade out all sound effects.
+```
+
+You can also put a sound in a group (or move it to another one) after it was loaded. A sound is in one group at a time, and a playing sound keeps playing:
+
+```cpp
+Audio::Sound jingle { "jingle.wav" };
+
+effects.add( jingle );                    // The same as jingle.setGroup( effects ).
+if ( jingle.getGroup() == effects ) { }   // true
+effects.remove( jingle );                 // Back to the device's output (no group).
+```
+
+Stopping a group pauses everything in it, and playing it again continues where the sounds were. This is handy for a pause menu:
+
+```cpp
+effects.stop();      // Pause all sound effects.
+effects.play();      // Continue them.
+music.stop( 2s );    // Fade the music out, then pause it.
+```
+
+Groups can contain other groups (`Audio::Group ui = effects.createSubgroup();`), and waveforms can play through a group too (`Audio::Waveform beep { effects, Audio::Waveform::Type::Square };`). A sound keeps its group alive, so it's safe to let a `Group` go out of scope while its sounds still play.
+
+The [game](examples/game/main.cpp) example has a music and an effects group, with a volume slider for each on its pause screen.
 
 ## Spatial Audio
 
@@ -513,6 +572,8 @@ if ( audio_sound_create( NULL, "music.ogg", AUDIO_SOUND_FLAGS_MUSIC, &music ) ==
 ...
 audio_sound_destroy( music );
 ```
+
+Groups work the same way: create one with `audio_group_create`, load sounds into it with `audio_sound_create_in_group`, and move sounds between groups with `audio_sound_set_group`. Every function is documented in [audio.h](include/Audio/audio.h).
 
 ## Upgrading From v1
 

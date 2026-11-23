@@ -19,6 +19,8 @@ enum class Key
 {
     Left,
     Right,
+    Up,
+    Down,
     Space,
     Pause,       // P or Escape.
     Fullscreen,  // F.

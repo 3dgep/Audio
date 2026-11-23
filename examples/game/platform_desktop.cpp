@@ -53,7 +53,7 @@ bool focusLost = false, focusLostThisFrame = false;
 bool cursorVisible = true;
 
 // fenster's key codes: mostly ASCII (upper case letters), the arrows are 17-20.
-constexpr int KeyRight = 19, KeyLeft = 20;
+constexpr int KeyUp = 17, KeyDown = 18, KeyRight = 19, KeyLeft = 20;
 constexpr int KeyEnter = 10, KeyEscape = 27, KeySpace = 32;
 
 #if defined( _WIN32 )
@@ -231,6 +231,8 @@ void readInput()
     const int* keys                         = window.keys;
     keyDown[static_cast<int>( Key::Left )]  = keys[KeyLeft] || keys['A'];
     keyDown[static_cast<int>( Key::Right )] = keys[KeyRight] || keys['D'];
+    keyDown[static_cast<int>( Key::Up )]    = keys[KeyUp] || keys['W'];
+    keyDown[static_cast<int>( Key::Down )]  = keys[KeyDown] || keys['S'];
     keyDown[static_cast<int>( Key::Space )] = keys[KeySpace] || keys[KeyEnter];
     keyDown[static_cast<int>( Key::Pause )] = keys['P'] || keys[KeyEscape];
     keyDown[static_cast<int>( Key::Fullscreen )] = keys['F'];
