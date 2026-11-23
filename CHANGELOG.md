@@ -4,6 +4,13 @@ All notable changes to the Audio library are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-11-23
+
+### Fixed
+
+- One-shots (`Sound::playOneShot`) piled up while the audio device wasn't running, for example in a browser before the first click or tap. The copies never finished, so they were never freed, every call got slower, and they all played at once when the audio started. A one-shot now plays right away or not at all: it is skipped (and still returns success) while the device isn't running, and while its group is paused or stopped.
+- At most 64 one-shots play at once per device; starting another one stops the oldest. Many one-shots in a single frame no longer pile up and play as one loud burst.
+
 ## [2.1.0] - 2026-11-23
 
 ### Added
@@ -171,6 +178,7 @@ See [Upgrading From v1](README.md#upgrading-from-v1) in the README.
 - Visual Studio 2022 solution and CMake build.
 - Example application with narration and a waveform coin sound effect.
 
+[2.1.1]: https://github.com/3dgep/Audio/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/3dgep/Audio/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/3dgep/Audio/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/3dgep/Audio/compare/v1.1.0...v2.0.0

@@ -44,7 +44,8 @@ struct audio_device
     volatile ma_spinlock lock;      /* Protects ref_count. */
     uint32_t             ref_count; /* One for the creator, plus one per sound, waveform and group. */
     uint32_t             listener_count;
-    audio_one_shot*      one_shots; /* Playing one-shots, newest first. */
+    audio_one_shot*      one_shots;      /* Playing one-shots, newest first. */
+    uint32_t             one_shot_count; /* At most AUDIO__MAX_ONE_SHOTS. */
 #if defined( _WIN32 )
     audio_utf8_vfs vfs; /* Must outlive the engine. */
 #endif
@@ -125,8 +126,20 @@ audio_result audio__move_to_group( audio_device* device, ma_node* node, audio_gr
 ma_result audio__ma_sound_play( ma_sound* sound, audio_fade_out* fade_out );
 ma_result audio__ma_sound_stop_with_fade( ma_sound* sound, audio_fade_out* fade_out, uint64_t milliseconds );
 
-/* One-shots (audio_sound_play_one_shot). */
+/* True if the device is pulling audio: started and, in a browser, the AudioContext is
+ * running (browsers keep it suspended until the user clicks or taps the page). */
+audio_bool32 audio__device_is_running( audio_device* device );
+
+/* True if the group and all its parents are playing (not paused or stopped). True for
+ * NULL (the device's output). */
+audio_bool32 audio__group_is_playing( audio_group* group );
+
+/* One-shots (audio_sound_play_one_shot). A device plays at most this many at once;
+ * starting another one stops the oldest. */
+#define AUDIO__MAX_ONE_SHOTS 64
+
 void audio__free_finished_one_shots( audio_device* device );
+void audio__free_oldest_one_shot( audio_device* device );
 void audio__free_one_shots( audio_device* device, audio_group* group, audio_bool32 all );
 
 /* Reset a sound to use the closest listener. Implemented in miniaudio.c. */

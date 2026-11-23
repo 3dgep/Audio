@@ -92,7 +92,7 @@ include(FetchContent)
 FetchContent_Declare(
     Audio
     GIT_REPOSITORY https://github.com/3dgep/Audio.git
-    GIT_TAG        v2.1.0
+    GIT_TAG        v2.1.1
 )
 
 FetchContent_MakeAvailable(Audio)
@@ -407,6 +407,8 @@ hit.playOneShot();
 ```
 
 A one-shot starts from the beginning, with the sound's current volume, pan, pitch and 3D position. It can't be stopped; it ends on its own. Copies share the sound's audio data, so they are cheap. One-shots only work for `Type::Sound` (music is streamed and can't be copied).
+
+A one-shot plays right away or not at all, because a late sound effect is useless. It is skipped while the audio device isn't running (in a browser, until the player clicks or taps the page) and while its group is paused or stopped. At most 64 one-shots play at once: starting another one stops the oldest.
 
 ### Checking for Errors
 

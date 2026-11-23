@@ -12,6 +12,10 @@
     #include <windows.h>
 #endif
 
+#if defined( __EMSCRIPTEN__ )
+    #include <emscripten.h>
+#endif
+
 /* ------------------------------------------------------------------------------
  * Version
  * ------------------------------------------------------------------------------ */
@@ -452,6 +456,29 @@ uint32_t AUDIO_CALL audio_device_get_listener_count( audio_device* device )
     listener_count = device->listener_count;
     audio__release_device( device );
     return listener_count;
+}
+
+audio_bool32 audio__device_is_running( audio_device* device )
+{
+    ma_device* ma_dev = ma_engine_get_device( &device->engine );
+
+    if ( !ma_dev || ma_device_get_state( ma_dev ) != ma_device_state_started )
+        return AUDIO_FALSE;
+
+#if defined( __EMSCRIPTEN__ )
+    /* miniaudio reports the device as started while the browser keeps the AudioContext
+     * suspended (until the user clicks or taps the page). */
+    return EM_ASM_INT(
+               {
+                   var device = window.miniaudio && window.miniaudio.get_device_by_index( $0 );
+                   return ( device && device.webaudio && device.webaudio.state === 'running' ) ? 1 : 0;
+               },
+               ma_dev->webaudio.deviceIndex )
+               ? AUDIO_TRUE
+               : AUDIO_FALSE;
+#else
+    return AUDIO_TRUE;
+#endif
 }
 
 audio_result AUDIO_CALL audio_play_sound( audio_device* device, const char* file_path )

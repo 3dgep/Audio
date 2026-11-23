@@ -86,7 +86,7 @@ extern "C" {
 
 #define AUDIO_VERSION_MAJOR 2
 #define AUDIO_VERSION_MINOR 1
-#define AUDIO_VERSION_PATCH 0
+#define AUDIO_VERSION_PATCH 1
 
 /* Pack a version into a uint32_t (10 bits major, 10 bits minor, 12 bits patch), and
  * get the parts back out. Packed versions can be compared with <, == and >. */
@@ -431,6 +431,12 @@ AUDIO_API audio_result AUDIO_CALL audio_sound_stop_with_fade( audio_sound* sound
  *
  * Copies share the sound's decoded audio data, so this is cheap. Streamed sounds
  * (AUDIO_SOUND_FLAG_STREAM) can't be copied: this returns AUDIO_INVALID_OPERATION.
+ *
+ * A one-shot plays now or not at all. Nothing is played (and AUDIO_SUCCESS is
+ * returned) while the device isn't running, for example in a browser before the user
+ * has clicked or tapped the page, or while the sound's group (or a parent group) is
+ * stopped or paused. At most 64 one-shots play at once per device: starting another
+ * one stops the oldest.
  */
 AUDIO_API audio_result AUDIO_CALL audio_sound_play_one_shot( audio_sound* sound );
 

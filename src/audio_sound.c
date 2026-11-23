@@ -151,8 +151,27 @@ audio_result AUDIO_CALL audio_sound_play_one_shot( audio_sound* sound )
 
     source = &sound->sound;
 
-    /* Free the one-shots that have finished playing, so they don't pile up. */
+    /* Copies share the decoded audio data with the sound. This doesn't work for streamed
+     * sounds, which read the file while they play. (Checked first, so the error is
+     * reported even when nothing would play.) */
+    if ( !source->pResourceManagerDataSource || ( source->pResourceManagerDataSource->flags & MA_RESOURCE_MANAGER_DATA_SOURCE_FLAG_STREAM ) )
+    {
+        audio__log( AUDIO_LOG_LEVEL_ERROR, "audio_sound_play_one_shot: streamed sounds (music) can't be played as a one-shot." );
+        return AUDIO_INVALID_OPERATION;
+    }
+
+    /* A sound effect is only useful right now. While the device isn't pulling audio
+     * (in a browser, before the user clicks or taps the page), a copy would wait at its
+     * first frame and play late, together with every other waiting copy. The same goes
+     * for a group that is paused or stopped. */
+    if ( !audio__device_is_running( sound->device ) || !audio__group_is_playing( sound->group ) )
+        return AUDIO_SUCCESS;
+
+    /* Free the one-shots that have finished playing, and stop the oldest one if the
+     * limit is reached, so the list stays short. */
     audio__free_finished_one_shots( sound->device );
+    if ( sound->device->one_shot_count >= AUDIO__MAX_ONE_SHOTS )
+        audio__free_oldest_one_shot( sound->device );
 
     shot = (audio_one_shot*)calloc( 1, sizeof( audio_one_shot ) );
     if ( !shot )
@@ -161,16 +180,11 @@ audio_result AUDIO_CALL audio_sound_play_one_shot( audio_sound* sound )
     if ( !ma_sound_is_spatialization_enabled( source ) )
         flags |= MA_SOUND_FLAG_NO_SPATIALIZATION;
 
-    /* The copy shares the decoded audio data with the sound. This doesn't work for
-     * streamed sounds, which read the file while they play. */
     copy   = &shot->sound;
     result = ma_sound_init_copy( &sound->device->engine, source, flags, sound->group ? &sound->group->group : NULL, copy );
     if ( result != MA_SUCCESS )
     {
-        if ( result == MA_INVALID_OPERATION )
-            audio__log( AUDIO_LOG_LEVEL_ERROR, "audio_sound_play_one_shot: streamed sounds (music) can't be played as a one-shot." );
-        else
-            audio__log( AUDIO_LOG_LEVEL_ERROR, "audio_sound_play_one_shot: %s", ma_result_description( result ) );
+        audio__log( AUDIO_LOG_LEVEL_ERROR, "audio_sound_play_one_shot: %s", ma_result_description( result ) );
         free( shot );
         return result == MA_INVALID_OPERATION ? AUDIO_INVALID_OPERATION : audio__result( result );
     }
@@ -204,8 +218,9 @@ audio_result AUDIO_CALL audio_sound_play_one_shot( audio_sound* sound )
     }
 
     shot->group             = sound->group;
-    shot->next              = sound->device->one_shots;
+    shot->next               = sound->device->one_shots;
     sound->device->one_shots = shot;
+    sound->device->one_shot_count++;
     return AUDIO_SUCCESS;
 }
 

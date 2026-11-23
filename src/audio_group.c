@@ -51,8 +51,13 @@ ma_result audio__ma_sound_stop_with_fade( ma_sound* sound, audio_fade_out* fade_
  * One-shots
  * ------------------------------------------------------------------------------ */
 
-static void audio__free_one_shot( audio_one_shot* shot )
+/* Unlink *link from the device's list and free it. */
+static void audio__free_one_shot( audio_device* device, audio_one_shot** link )
 {
+    audio_one_shot* shot = *link;
+
+    *link = shot->next;
+    device->one_shot_count--;
     ma_sound_uninit( &shot->sound );
     free( shot );
 }
@@ -63,15 +68,13 @@ void audio__free_finished_one_shots( audio_device* device )
 
     while ( *link )
     {
-        audio_one_shot* shot = *link;
-        if ( ma_sound_at_end( &shot->sound ) )
+        if ( ma_sound_at_end( &( *link )->sound ) )
         {
-            *link = shot->next;
-            audio__free_one_shot( shot );
+            audio__free_one_shot( device, link );
         }
         else
         {
-            link = &shot->next;
+            link = &( *link )->next;
         }
     }
 }
@@ -82,17 +85,40 @@ void audio__free_one_shots( audio_device* device, audio_group* group, audio_bool
 
     while ( *link )
     {
-        audio_one_shot* shot = *link;
-        if ( all || shot->group == group )
+        if ( all || ( *link )->group == group )
         {
-            *link = shot->next;
-            audio__free_one_shot( shot );
+            audio__free_one_shot( device, link );
         }
         else
         {
-            link = &shot->next;
+            link = &( *link )->next;
         }
     }
+}
+
+audio_bool32 audio__group_is_playing( audio_group* group )
+{
+    for ( ; group; group = group->parent )
+    {
+        if ( !ma_sound_is_playing( &group->group ) )
+            return AUDIO_FALSE;
+    }
+
+    return AUDIO_TRUE;
+}
+
+void audio__free_oldest_one_shot( audio_device* device )
+{
+    audio_one_shot** link = &device->one_shots;
+
+    if ( !*link )
+        return;
+
+    /* The list is newest first, so the oldest one-shot is the last. */
+    while ( ( *link )->next )
+        link = &( *link )->next;
+
+    audio__free_one_shot( device, link );
 }
 
 /* ------------------------------------------------------------------------------

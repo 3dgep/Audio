@@ -177,6 +177,12 @@ public:
     ///
     /// Only works for `Type::Sound`: music is streamed and can't be copied
     /// (returns `Result::InvalidOperation`).
+    ///
+    /// A one-shot plays now or not at all, because a late sound effect is useless. It
+    /// is skipped (and `Result::Success` is returned) while the audio device isn't
+    /// running, for example in a browser before the player has clicked or tapped the
+    /// page, and while the sound's group is paused or stopped. At most 64 one-shots
+    /// play at once: starting another one stops the oldest.
     Result playOneShot() noexcept
     {
         return detail::toResult( audio_sound_play_one_shot( get() ) );
